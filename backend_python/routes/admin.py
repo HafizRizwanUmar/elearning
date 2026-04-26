@@ -247,14 +247,66 @@ def get_sessions(cid):
 @role_required('Admin')
 def add_session(cid):
     data = request.get_json()
-    for f in ['day', 'start_time', 'end_time']:
-        if not data.get(f):
-            return jsonify({'message': f'{f} is required'}), 400
+    day = data.get('day')
+    start = data.get('start_time')
+    end = data.get('end_time')
+    room = data.get('room', '')
+
+    if not day or not start or not end:
+        return jsonify({'message': 'Day, start time, and end time are required'}), 400
+
     conn = get_db()
     c = conn.cursor()
-    c.execute("""INSERT INTO class_sessions (course_id,day,start_time,end_time,room)
+
+    # 1. Get the teacher_id for the current course
+    c.execute("SELECT teacher_id FROM courses WHERE id = ?", (cid,))
+    teacher_row = c.fetchone()
+    if not teacher_row or not teacher_row['teacher_id']:
+        # If no teacher is assigned yet, we skip the conflict check
+        teacher_id = None
+    else:
+        teacher_id = teacher_row['teacher_id']
+
+    # 2. Check for teacher time conflicts across ALL their courses
+    if teacher_id:
+        c.execute("""
+            SELECT cs.id, co.name as course_name 
+            FROM class_sessions cs
+            JOIN courses co ON co.id = cs.course_id
+            WHERE co.teacher_id = ? 
+            AND cs.day = ? 
+            AND (
+                (cs.start_time < ? AND cs.end_time > ?) -- Overlap condition
+            )
+        """, (teacher_id, day, end, start))
+        
+        conflict = c.fetchone()
+        if conflict:
+            conn.close()
+            return jsonify({
+                'message': f'Conflict: This teacher already has a session for "{conflict["course_name"]}" during this time slot.'
+            }), 409
+
+    # 3. Optional: Check for Room conflict
+    if room:
+        c.execute("""
+            SELECT cs.id, co.name as course_name 
+            FROM class_sessions cs
+            JOIN courses co ON co.id = cs.course_id
+            WHERE cs.room = ? AND cs.day = ? 
+            AND (cs.start_time < ? AND cs.end_time > ?)
+        """, (room, day, end, start))
+        room_conflict = c.fetchone()
+        if room_conflict:
+            conn.close()
+            return jsonify({
+                'message': f'Conflict: Room {room} is already booked for "{room_conflict["course_name"]}" during this time.'
+            }), 409
+
+    # 4. If no conflicts, insert
+    c.execute("""INSERT INTO class_sessions (course_id, day, start_time, end_time, room)
                  VALUES (?,?,?,?,?)""",
-              (cid, data['day'], data['start_time'], data['end_time'], data.get('room', '')))
+              (cid, day, start, end, room))
     conn.commit()
     new_id = c.lastrowid
     conn.close()

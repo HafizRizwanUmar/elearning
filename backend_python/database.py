@@ -90,6 +90,8 @@ def init_db():
             description TEXT,
             deadline TEXT,
             max_score REAL DEFAULT 100,
+            file_path TEXT,
+            file_name TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -148,6 +150,13 @@ def _migrate(conn, c):
         c.execute("ALTER TABLE grades ADD COLUMN attendance_score REAL")
     if 'assignment_score' not in existing_grade_cols:
         c.execute("ALTER TABLE grades ADD COLUMN assignment_score REAL")
+
+    # assignments: file_path, file_name
+    existing_ass_cols = {row[1] for row in c.execute("PRAGMA table_info(assignments)")}
+    if 'file_path' not in existing_ass_cols:
+        c.execute("ALTER TABLE assignments ADD COLUMN file_path TEXT")
+    if 'file_name' not in existing_ass_cols:
+        c.execute("ALTER TABLE assignments ADD COLUMN file_name TEXT")
 
     # class_sessions table
     c.execute("""CREATE TABLE IF NOT EXISTS class_sessions (

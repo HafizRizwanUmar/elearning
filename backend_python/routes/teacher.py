@@ -1,4 +1,6 @@
-from flask import Blueprint, request, jsonify
+import os
+from flask import Blueprint, request, jsonify, current_app
+from werkzeug.utils import secure_filename
 from database import get_db
 from auth import role_required
 
@@ -296,21 +298,44 @@ def get_assignments():
 @teacher_bp.route('/assignments', methods=['POST'])
 @role_required('Teacher')
 def add_assignment():
-    data = request.get_json()
-    for f in ['title','course_id']:
-        if not data.get(f):
-            return jsonify({'message': f'{f} is required'}), 400
+    # Handle both JSON and Form Data
+    if request.is_json:
+        data = request.get_json()
+        file = None
+    else:
+        data = request.form
+        file = request.files.get('file')
+
+    title = data.get('title')
+    course_id = data.get('course_id')
+
+    if not title or not course_id:
+        return jsonify({'message': 'Title and Course ID are required'}), 400
+
+    file_path = None
+    file_name = None
+
+    if file and file.filename != '':
+        filename = secure_filename(file.filename)
+        # Unique name to avoid collisions
+        unique_name = f"assn_{int(os.getpid())}_{filename}"
+        file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], unique_name))
+        file_path = f"/api/uploads/{unique_name}"
+        file_name = filename
+
     conn = get_db()
     c = conn.cursor()
-    c.execute("""INSERT INTO assignments (course_id,teacher_id,title,description,deadline)
-                 VALUES (?,?,?,?,?)""",
-              (data['course_id'], request.user_id, data['title'], data.get('description'), data.get('deadline')))
+    c.execute("""INSERT INTO assignments (course_id, teacher_id, title, description, deadline, file_path, file_name)
+                 VALUES (?,?,?,?,?,?,?)""",
+              (course_id, request.user_id, title, data.get('description'), data.get('deadline'), file_path, file_name))
     conn.commit()
     assn_id = c.lastrowid
-    c.execute("SELECT student_id FROM enrollments WHERE course_id=?", (data['course_id'],))
-    for row in c.fetchall():
-        conn.execute("INSERT INTO notifications (user_id,message) VALUES (?,?)",
-                     (row['student_id'], f"New assignment posted: {data['title']}"))
+    
+    c.execute("SELECT student_id FROM enrollments WHERE course_id=?", (course_id,))
+    students = c.fetchall()
+    for row in students:
+        conn.execute("INSERT INTO notifications (user_id, message) VALUES (?,?)",
+                     (row['student_id'], f"New assignment posted: {title}"))
     conn.commit()
     conn.close()
     return jsonify({'message': 'Assignment created', 'id': assn_id}), 201

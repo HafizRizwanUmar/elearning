@@ -117,9 +117,29 @@ const StudentAssignments = () => {
                         {expanded[a.id] && (
                             <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
                                 {a.description && (
-                                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '12px 0', lineHeight: 1.6 }}>
-                                        {a.description}
                                     </p>
+                                )}
+
+                                {a.file_name && (
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+                                            Teacher's Attachment
+                                        </div>
+                                        <a
+                                            href={`${API_BASE}${a.file_path}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                                padding: '8px 12px', borderRadius: 'var(--r-md)',
+                                                background: 'var(--primary-bg)', border: '1px solid var(--primary-border)',
+                                                fontSize: 12, color: 'var(--primary)', fontWeight: 600,
+                                                textDecoration: 'none'
+                                            }}
+                                        >
+                                            <MdAttachFile size={14} /> {a.file_name}
+                                        </a>
+                                    </div>
                                 )}
 
                                 {isSubmitted ? (

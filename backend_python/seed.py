@@ -1,4 +1,4 @@
-from passlib.hash import bcrypt
+from passlib.hash import pbkdf2_sha256 as pwd_hasher
 from database import get_db
 from datetime import datetime, timedelta
 
@@ -14,7 +14,7 @@ def seed_data():
         return
 
     def hash_pw(pw):
-        return bcrypt.hash(pw)
+        return pwd_hasher.hash(pw)
 
     # --- Users ---
     users = [

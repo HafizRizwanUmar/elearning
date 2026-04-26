@@ -8,8 +8,8 @@ from database import get_db
 
 auth_bp = Blueprint('auth', __name__)
 
-# Initialize CryptContext for password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Initialize CryptContext for password hashing (Using pbkdf2_sha256 to avoid bcrypt installation issues)
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 def generate_token(user_id, role):
     secret = os.getenv('JWT_SECRET', 'secret')

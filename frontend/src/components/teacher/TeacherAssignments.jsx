@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
-import { MdAdd, MdEdit, MdDelete, MdAssignment, MdExpandMore, MdExpandLess, MdDownload, MdGrade } from 'react-icons/md';
+import { MdAdd, MdEdit, MdDelete, MdAssignment, MdExpandMore, MdExpandLess, MdDownload, MdGrade, MdAttachFile } from 'react-icons/md';
 
 const API_BASE = 'http://localhost:5000';
 
@@ -18,6 +18,7 @@ const TeacherAssignments = () => {
     const [deleteConfirm, setDeleteConfirm] = useState(null);
     const [gradeInputs, setGradeInputs] = useState({});  // { submissionKey: score }
     const [gradingSaving, setGradingSaving] = useState({});
+    const [selectedFile, setSelectedFile] = useState(null);
 
     const load = async () => {
         try {
@@ -30,6 +31,7 @@ const TeacherAssignments = () => {
     const openAdd = () => {
         setEditing(null);
         setForm({ title: '', course_id: courses[0]?.id || '', description: '', deadline: '' });
+        setSelectedFile(null);
         setModal(true);
     };
     const openEdit = (a) => {
@@ -42,9 +44,24 @@ const TeacherAssignments = () => {
         if (!form.title || !form.course_id) return setMsg({ text: 'Title and course required', type: 'error' });
         setSaving(true);
         try {
-            if (editing) await api.put(`/api/teacher/assignments/${editing.id}`, form);
-            else await api.post('/api/teacher/assignments', form);
-            setModal(false); setMsg({ text: editing ? 'Updated' : 'Assignment created', type: 'success' }); load();
+            if (editing) {
+                await api.put(`/api/teacher/assignments/${editing.id}`, form);
+            } else {
+                const fd = new FormData();
+                fd.append('title', form.title);
+                fd.append('course_id', form.course_id);
+                fd.append('description', form.description);
+                fd.append('deadline', form.deadline);
+                if (selectedFile) fd.append('file', selectedFile);
+                
+                await api.post('/api/teacher/assignments', fd, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+            setModal(false); 
+            setSelectedFile(null);
+            setMsg({ text: editing ? 'Updated' : 'Assignment created', type: 'success' }); 
+            load();
         } catch (e) { setMsg({ text: e.response?.data?.message || 'Error', type: 'error' }); }
         finally { setSaving(false); }
     };
@@ -109,6 +126,18 @@ const TeacherAssignments = () => {
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            {a.file_name && (
+                                <a 
+                                    href={`${API_BASE}${a.file_path}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    onClick={e => e.stopPropagation()}
+                                    title={`Attachment: ${a.file_name}`}
+                                    style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}
+                                >
+                                    <MdAttachFile size={16} />
+                                </a>
+                            )}
                             <button className="btn btn-ghost btn-sm btn-icon" onClick={e => { e.stopPropagation(); openEdit(a); }}><MdEdit size={14} /></button>
                             <button className="btn btn-danger btn-sm btn-icon" onClick={e => { e.stopPropagation(); setDeleteConfirm(a.id); }}><MdDelete size={14} /></button>
                             {expanded[a.id] ? <MdExpandLess size={18} color="var(--text-muted)" /> : <MdExpandMore size={18} color="var(--text-muted)" />}
@@ -212,6 +241,18 @@ const TeacherAssignments = () => {
                                 <div className="form-group"><label className="form-label">Deadline</label><input type="date" className="form-input" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} /></div>
                             </div>
                             <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Instructions…" /></div>
+                            {!editing && (
+                                <div className="form-group">
+                                    <label className="form-label">Attach File (Optional)</label>
+                                    <input 
+                                        type="file" 
+                                        className="form-input" 
+                                        onChange={e => setSelectedFile(e.target.files[0])}
+                                        style={{ padding: '4px 8px' }}
+                                    />
+                                    {selectedFile && <div style={{ fontSize: 11, color: 'var(--primary)', marginTop: 4 }}>Selected: {selectedFile.name}</div>}
+                                </div>
+                            )}
                         </div>
                         <div className="modal-footer">
                             <button className="btn btn-ghost" onClick={() => setModal(false)}>Cancel</button>
