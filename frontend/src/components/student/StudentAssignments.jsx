@@ -117,6 +117,8 @@ const StudentAssignments = () => {
                         {expanded[a.id] && (
                             <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
                                 {a.description && (
+                                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '12px 0', lineHeight: 1.6 }}>
+                                        {a.description}
                                     </p>
                                 )}
 

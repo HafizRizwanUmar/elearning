@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
-import { MdAdd, MdEdit, MdDelete, MdAssignment, MdExpandMore, MdExpandLess, MdDownload, MdGrade, MdAttachFile } from 'react-icons/md';
+import { MdAdd, MdEdit, MdDelete, MdAssignment, MdExpandMore, MdExpandLess, MdDownload, MdGrade, MdAttachFile, MdClose } from 'react-icons/md';
 
 const API_BASE = 'http://localhost:5000';
 
@@ -244,13 +244,49 @@ const TeacherAssignments = () => {
                             {!editing && (
                                 <div className="form-group">
                                     <label className="form-label">Attach File (Optional)</label>
-                                    <input 
-                                        type="file" 
-                                        className="form-input" 
-                                        onChange={e => setSelectedFile(e.target.files[0])}
-                                        style={{ padding: '4px 8px' }}
-                                    />
-                                    {selectedFile && <div style={{ fontSize: 11, color: 'var(--primary)', marginTop: 4 }}>Selected: {selectedFile.name}</div>}
+                                    <div 
+                                        className="upload-area" 
+                                        onClick={() => document.getElementById('assn-file').click()}
+                                        style={{
+                                            border: '1.5px dashed var(--border-md)',
+                                            borderRadius: 'var(--r-md)',
+                                            padding: '16px',
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            background: selectedFile ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent',
+                                            transition: 'var(--t-fast)'
+                                        }}
+                                    >
+                                        <input 
+                                            id="assn-file"
+                                            type="file" 
+                                            style={{ display: 'none' }} 
+                                            onChange={e => setSelectedFile(e.target.files[0])}
+                                        />
+                                        {selectedFile ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                    <MdAttachFile size={20} color="var(--primary)" />
+                                                    <div>
+                                                        <div style={{ fontSize: 13, fontWeight: 600 }}>{selectedFile.name}</div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{(selectedFile.size / 1024).toFixed(1)} KB</div>
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    className="btn btn-ghost btn-sm btn-icon" 
+                                                    onClick={e => { e.stopPropagation(); setSelectedFile(null); }}
+                                                >
+                                                    <MdClose size={14} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div style={{ color: 'var(--text-muted)' }}>
+                                                <MdAttachFile size={24} style={{ marginBottom: 4, display: 'block', margin: '0 auto' }} />
+                                                <div style={{ fontSize: 13, fontWeight: 500 }}>Click to upload attachment</div>
+                                                <div style={{ fontSize: 11 }}>PDF, Doc, Images, Zip (Max 20MB)</div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
