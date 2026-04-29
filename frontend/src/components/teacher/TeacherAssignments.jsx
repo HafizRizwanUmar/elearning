@@ -250,7 +250,7 @@ const TeacherAssignments = () => {
                                         style={{
                                             border: '1.5px dashed var(--border-md)',
                                             borderRadius: 'var(--r-md)',
-                                            padding: '16px',
+                                            padding: '12px',
                                             textAlign: 'center',
                                             cursor: 'pointer',
                                             background: selectedFile ? 'rgba(var(--primary-rgb), 0.05)' : 'transparent',
@@ -281,9 +281,9 @@ const TeacherAssignments = () => {
                                             </div>
                                         ) : (
                                             <div style={{ color: 'var(--text-muted)' }}>
-                                                <MdAttachFile size={24} style={{ marginBottom: 4, display: 'block', margin: '0 auto' }} />
-                                                <div style={{ fontSize: 13, fontWeight: 500 }}>Click to upload attachment</div>
-                                                <div style={{ fontSize: 11 }}>PDF, Doc, Images, Zip (Max 20MB)</div>
+                                                <MdAttachFile size={20} style={{ marginBottom: 2, display: 'block', margin: '0 auto' }} />
+                                                <div style={{ fontSize: 12, fontWeight: 500 }}>Click to upload attachment</div>
+                                                <div style={{ fontSize: 10 }}>PDF, Doc, Images, Zip (Max 20MB)</div>
                                             </div>
                                         )}
                                     </div>
