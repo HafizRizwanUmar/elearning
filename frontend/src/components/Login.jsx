@@ -49,15 +49,7 @@ const Login = () => {
                     <div style={{ position: 'relative', zIndex: 1 }}>
                         {/* Logo mark */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
-                            <div style={{
-                                width: 34, height: 34,
-                                background: 'var(--primary)',
-                                borderRadius: 'var(--r-md)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: 'black', flexShrink: 0,
-                            }}>
-                                <MdSchool size={18} />
-                            </div>
+                            <img src="/logo.jpeg" alt="Classeta Logo" style={{ width: '34px', height: '34px', borderRadius: 'var(--r-md)', objectFit: 'cover', flexShrink: 0 }} />
                             <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
                                 CLASSETA
                             </span>

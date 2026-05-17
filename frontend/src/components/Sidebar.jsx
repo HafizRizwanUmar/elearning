@@ -57,9 +57,7 @@ const Sidebar = ({ activePage, onNavigate }) => {
         <aside className="sidebar">
             {/* Logo */}
             <div className="sidebar-logo">
-                <div className="sidebar-logo-icon">
-                    <MdAutoAwesome size={20} />
-                </div>
+                <img src="/logo.jpeg" alt="Classeta Logo" style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }} />
                 <span className="sidebar-logo-text">Classeta</span>
             </div>
 

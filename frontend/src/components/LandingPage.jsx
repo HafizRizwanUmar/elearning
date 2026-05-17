@@ -17,23 +17,23 @@ const MdCalendar = MdEventNote; // alias for schedule icon
    ────────────────────────────────────────────────────────────────────────── */
 
 const FONTS = `
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Montserrat:wght@300;400;500;600;700&display=swap');
 `;
 
 const CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --black: #090909;
-    --surface: #111111;
-    --surface2: #181818;
-    --border: rgba(255,255,255,0.07);
-    --border2: rgba(255,255,255,0.12);
-    --white: #F5F0E8;
-    --amber: #E8B84B;
-    --amber-dim: rgba(232,184,75,0.12);
-    --amber-glow: rgba(232,184,75,0.06);
-    --text-muted: #5A5A5A;
-    --text-secondary: #888;
+    --black: #F4F7FE;
+    --surface: #FFFFFF;
+    --surface2: #F8FAFC;
+    --border: #E2E8F0;
+    --border2: #CBD5E1;
+    --white: #1E293B;
+    --amber: #4B6BFB;
+    --amber-dim: rgba(75, 107, 251, 0.10);
+    --amber-glow: rgba(75, 107, 251, 0.06);
+    --text-muted: #94A3B8;
+    --text-secondary: #475569;
     --radius: 20px;
     --radius-sm: 12px;
   }
@@ -43,7 +43,7 @@ const CSS = `
   body {
     background: var(--black);
     color: var(--white);
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Montserrat', sans-serif;
     overflow-x: hidden;
   }
 
@@ -63,7 +63,7 @@ const CSS = `
     display: flex; justify-content: space-between; align-items: center;
     padding: 20px 64px;
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    background: rgba(9,9,9,0.85);
+    background: rgba(244, 247, 254, 0.85);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
     transition: all 0.3s ease;
@@ -72,16 +72,16 @@ const CSS = `
   .nav-logo-icon {
     width: 34px; height: 34px; background: var(--amber);
     border-radius: 9px; display: flex; align-items: center;
-    justify-content: center; color: #000; flex-shrink: 0;
+    justify-content: center; color: #FFFFFF; flex-shrink: 0;
   }
-  .nav-logo-text { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--white); }
+  .nav-logo-text { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--white); }
   .nav-links { display: flex; gap: 40px; align-items: center; }
   .nav-link { font-size: 14px; color: var(--text-secondary); cursor: pointer; transition: color 0.2s; font-weight: 500; }
   .nav-link:hover { color: var(--white); }
   .nav-cta {
-    background: var(--white); color: #000; border: none;
+    background: var(--amber); color: #FFFFFF; border: none;
     padding: 10px 26px; border-radius: 100px; font-weight: 600;
-    font-size: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; cursor: pointer; font-family: 'Montserrat', sans-serif;
     transition: background 0.2s, transform 0.15s;
   }
   .nav-cta:hover { background: var(--amber); transform: translateY(-1px); }
@@ -97,14 +97,14 @@ const CSS = `
   .hero-glow {
     position: absolute; top: 20%; right: 5%;
     width: 600px; height: 600px;
-    background: radial-gradient(circle, rgba(232,184,75,0.08) 0%, transparent 65%);
+    background: radial-gradient(circle, rgba(75,107,251,0.08) 0%, transparent 65%);
     pointer-events: none;
   }
   .hero-eyebrow {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 7px 16px; border-radius: 100px;
-    border: 1px solid rgba(232,184,75,0.3);
-    background: rgba(232,184,75,0.07);
+    border: 1px solid rgba(75,107,251,0.3);
+    background: rgba(75,107,251,0.07);
     font-size: 13px; font-weight: 600; color: var(--amber);
     margin-bottom: 28px; letter-spacing: 0.02em;
   }
@@ -122,22 +122,22 @@ const CSS = `
   }
   .hero-actions { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   .btn-primary {
-    background: var(--amber); color: #000; border: none;
+    background: var(--amber); color: #FFFFFF; border: none;
     padding: 15px 36px; border-radius: 100px; font-weight: 700;
-    font-size: 16px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 16px; cursor: pointer; font-family: 'Montserrat', sans-serif;
     display: flex; align-items: center; gap: 10px;
     transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 20px rgba(232,184,75,0.25);
+    box-shadow: 0 4px 20px rgba(75,107,251,0.25);
   }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(232,184,75,0.35); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(75,107,251,0.35); }
   .btn-ghost {
     background: transparent; color: var(--white); border: 1px solid var(--border2);
     padding: 15px 36px; border-radius: 100px; font-weight: 500;
-    font-size: 16px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 16px; cursor: pointer; font-family: 'Montserrat', sans-serif;
     display: flex; align-items: center; gap: 10px;
     transition: border-color 0.2s, background 0.2s;
   }
-  .btn-ghost:hover { border-color: var(--amber); background: rgba(232,184,75,0.05); }
+  .btn-ghost:hover { border-color: var(--amber); background: rgba(75,107,251,0.05); }
   .hero-social-proof {
     display: flex; align-items: center; gap: 12px; margin-top: 40px;
   }
@@ -171,8 +171,8 @@ const CSS = `
   .dashboard-title { font-size: 14px; font-weight: 600; color: var(--white); }
   .dashboard-badge {
     font-size: 11px; font-weight: 600; padding: 4px 12px;
-    background: rgba(232,184,75,0.15); color: var(--amber);
-    border-radius: 100px; border: 1px solid rgba(232,184,75,0.25);
+    background: rgba(75,107,251,0.15); color: var(--amber);
+    border-radius: 100px; border: 1px solid rgba(75,107,251,0.25);
   }
   .dashboard-body { padding: 24px; }
   .course-row {
@@ -181,7 +181,7 @@ const CSS = `
     background: var(--surface2); margin-bottom: 10px;
     transition: background 0.2s;
   }
-  .course-row:hover { background: rgba(232,184,75,0.06); }
+  .course-row:hover { background: rgba(75,107,251,0.06); }
   .course-icon {
     width: 40px; height: 40px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
@@ -205,9 +205,9 @@ const CSS = `
   /* Floating badge */
   .float-badge {
     position: absolute; top: -20px; right: -20px;
-    background: var(--amber); color: #000;
+    background: var(--amber); color: #FFFFFF;
     border-radius: 16px; padding: 14px 18px;
-    box-shadow: 0 8px 30px rgba(232,184,75,0.4);
+    box-shadow: 0 8px 30px rgba(75,107,251,0.4);
     font-size: 12px; font-weight: 700; text-align: center;
     animation: floatY 3s ease-in-out infinite;
   }
@@ -268,17 +268,17 @@ const CSS = `
   .bento-card.span3 { grid-column: span 3; }
   .bento-card.span4 { grid-column: span 4; }
   .bento-card.dark { background: var(--surface2); }
-  .bento-card.accent { background: var(--amber); color: #000; border-color: var(--amber); }
-  .bento-card.accent .bento-card-desc { color: rgba(0,0,0,0.65); }
+  .bento-card.accent { background: var(--amber); color: #FFFFFF; border-color: var(--amber); }
+  .bento-card.accent .bento-card-desc { color: rgba(255,255,255,0.85); }
   .bento-icon {
     width: 52px; height: 52px; border-radius: 14px;
     background: var(--amber-dim); color: var(--amber);
     display: flex; align-items: center; justify-content: center;
     margin-bottom: 20px;
   }
-  .bento-card.accent .bento-icon { background: rgba(0,0,0,0.12); color: #000; }
+  .bento-card.accent .bento-icon { background: rgba(255,255,255,0.2); color: #FFFFFF; }
   .bento-card-title { font-size: 20px; font-weight: 700; margin-bottom: 10px; }
-  .bento-card.accent .bento-card-title { color: #000; }
+  .bento-card.accent .bento-card-title { color: #FFFFFF; }
   .bento-card-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.65; }
   .bento-big-num { font-family: 'Playfair Display', serif; font-size: 64px; font-weight: 900; color: var(--amber); line-height: 1; margin: 12px 0 8px; }
   .bento-tag { display: inline-flex; gap: 6px; align-items: center; padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 600; }
@@ -288,7 +288,7 @@ const CSS = `
   .check-list li svg { color: var(--amber); flex-shrink: 0; }
 
   /* ── Courses Carousel Preview ── */
-  .courses-section { padding: 100px 64px; background: #0B0B0B; }
+  .courses-section { padding: 100px 64px; background: #F4F7FE; }
   .courses-header { max-width: 1400px; margin: 0 auto 50px; display: flex; justify-content: space-between; align-items: flex-end; }
   .courses-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
   .course-card {
@@ -340,15 +340,15 @@ const CSS = `
   }
   .cta-inner {
     max-width: 1100px; margin: 0 auto;
-    background: linear-gradient(135deg, #1A1500 0%, #110F00 50%, var(--surface) 100%);
-    border: 1px solid rgba(232,184,75,0.2);
+    background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 50%, var(--surface) 100%);
+    border: 1px solid rgba(75,107,251,0.2);
     border-radius: 32px; padding: 80px; text-align: center;
     position: relative; overflow: hidden;
   }
   .cta-inner::before {
     content: ''; position: absolute; top: -50%; left: 50%; transform: translateX(-50%);
     width: 500px; height: 300px;
-    background: radial-gradient(circle, rgba(232,184,75,0.12) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(75,107,251,0.12) 0%, transparent 70%);
     pointer-events: none;
   }
   .cta-title { font-family: 'Playfair Display', serif; font-size: 52px; font-weight: 900; margin-bottom: 20px; line-height: 1.1; }
@@ -441,9 +441,9 @@ function AnimatedStat({ value, suffix, label }) {
 
 /* ─── COURSES DATA ─────────────────────────────────────────────────────────── */
 const COURSES = [
-    { emoji: '⚛️', bg: 'linear-gradient(135deg,#0D1B2A,#1B2A3D)', tag: 'Development', tagColor: 'rgba(99,179,237,0.15)', tagText: '#63B3ED', title: 'Modern React & Next.js Mastery', author: 'by Ahmad Hassan', rating: 4.9, students: '12.4k', level: 'Intermediate' },
-    { emoji: '🎨', bg: 'linear-gradient(135deg,#1A0D2E,#2D1B3D)', tag: 'Design', tagColor: 'rgba(183,148,246,0.15)', tagText: '#B794F6', title: 'UI/UX Design Fundamentals', author: 'by Sara Malik', rating: 4.8, students: '9.1k', level: 'Beginner' },
-    { emoji: '🤖', bg: 'linear-gradient(135deg,#0D1F1A,#1B3A2D)', tag: 'AI & ML', tagColor: 'rgba(72,199,120,0.15)', tagText: '#48c778', title: 'Machine Learning with Python', author: 'by Dr. Ali Raza', rating: 4.9, students: '18.7k', level: 'Advanced' },
+    { emoji: '⚛️', bg: 'linear-gradient(135deg,#E0F2FE,#BAE6FD)', tag: 'Development', tagColor: 'rgba(99,179,237,0.15)', tagText: '#63B3ED', title: 'Modern React & Next.js Mastery', author: 'by Ahmad Hassan', rating: 4.9, students: '12.4k', level: 'Intermediate' },
+    { emoji: '🎨', bg: 'linear-gradient(135deg,#F3E8FF,#E9D5FF)', tag: 'Design', tagColor: 'rgba(183,148,246,0.15)', tagText: '#8B5CF6', title: 'UI/UX Design Fundamentals', author: 'by Sara Malik', rating: 4.8, students: '9.1k', level: 'Beginner' },
+    { emoji: '🤖', bg: 'linear-gradient(135deg,#DCFCE7,#BBF7D0)', tag: 'AI & ML', tagColor: 'rgba(72,199,120,0.15)', tagText: '#48c778', title: 'Machine Learning with Python', author: 'by Dr. Ali Raza', rating: 4.9, students: '18.7k', level: 'Advanced' },
 ];
 
 const TESTIMONIALS = [
@@ -463,7 +463,7 @@ const LandingPage = () => {
             {/* ── Nav ── */}
             <nav className="nav">
                 <div className="nav-logo">
-                    <div className="nav-logo-icon"><MdAutoAwesome size={18} /></div>
+                    <img src="/logo.jpeg" alt="Classeta Logo" style={{ width: '34px', height: '34px', borderRadius: '9px', objectFit: 'cover', flexShrink: 0 }} />
                     <span className="nav-logo-text">Classeta</span>
                 </div>
                 <div className="nav-links">
@@ -524,9 +524,9 @@ const LandingPage = () => {
                             </div>
                             <div className="dashboard-body">
                                 {[
-                                    { name: 'Attendance — CS101', pct: 92, color: '#E8B84B' },
+                                    { name: 'Attendance — CS101', pct: 92, color: '#4B6BFB' },
                                     { name: 'Grades — Math201', pct: 85, color: '#48c778' },
-                                    { name: 'Assignments Due — 3', pct: 60, color: '#B794F6' },
+                                    { name: 'Assignments Due — 3', pct: 60, color: '#8B5CF6' },
                                 ].map(c => (
                                     <div className="course-row" key={c.name}>
                                         <div className="course-icon" style={{ background: c.color + '18' }}>
@@ -656,9 +656,9 @@ const LandingPage = () => {
                 </div>
                 <div className="courses-grid">
                     {[
-                        { emoji: '🛡️', bg: 'linear-gradient(135deg,#1A0A0A,#2A1B1B)', tag: 'Admin', tagColor: 'rgba(252,165,165,0.15)', tagText: '#FCA5A5', title: 'Full System Control', desc: 'Manage students, teachers, courses, roles and view analytics reports all from one powerful admin panel.' },
-                        { emoji: '👨‍🏫', bg: 'linear-gradient(135deg,#0A1A1A,#1B2A2A)', tag: 'Teacher', tagColor: 'rgba(167,216,222,0.15)', tagText: '#A7D8DE', title: 'Classroom Management', desc: 'Mark attendance, enter grades, create assignments, post announcements, and monitor your students.' },
-                        { emoji: '🎓', bg: 'linear-gradient(135deg,#0D1F0A,#1B3A18)', tag: 'Student', tagColor: 'rgba(218,255,150,0.15)', tagText: '#DAFF96', title: 'Personal Learning Hub', desc: 'View your schedule, track grades, submit assignments, and stay updated with teacher announcements.' },
+                        { emoji: '🛡️', bg: 'linear-gradient(135deg,#FEE2E2,#FECACA)', tag: 'Admin', tagColor: 'rgba(252,165,165,0.15)', tagText: '#FCA5A5', title: 'Full System Control', desc: 'Manage students, teachers, courses, roles and view analytics reports all from one powerful admin panel.' },
+                        { emoji: '👨‍🏫', bg: 'linear-gradient(135deg,#E0F2FE,#BAE6FD)', tag: 'Teacher', tagColor: 'rgba(167,216,222,0.15)', tagText: '#A7D8DE', title: 'Classroom Management', desc: 'Mark attendance, enter grades, create assignments, post announcements, and monitor your students.' },
+                        { emoji: '🎓', bg: 'linear-gradient(135deg,#DCFCE7,#BBF7D0)', tag: 'Student', tagColor: 'rgba(218,255,150,0.15)', tagText: '#DAFF96', title: 'Personal Learning Hub', desc: 'View your schedule, track grades, submit assignments, and stay updated with teacher announcements.' },
                     ].map((c, i) => (
                         <div className="course-card" key={i}>
                             <div className="course-thumb" style={{ background: c.bg }}>
@@ -727,7 +727,7 @@ const LandingPage = () => {
                     <div className="footer-top">
                         <div className="footer-brand">
                             <div className="footer-brand-name">
-                                <div className="nav-logo-icon" style={{ width: 30, height: 30 }}><MdAutoAwesome size={15} /></div>
+                                <img src="/logo.jpeg" alt="Classeta Logo" style={{ width: '30px', height: '30px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />
                                 <span className="nav-logo-text">Classeta</span>
                             </div>
                             <p className="footer-brand-desc">
