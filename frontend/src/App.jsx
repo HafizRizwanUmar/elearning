@@ -41,6 +41,7 @@ import StudentMaterials from './components/student/StudentMaterials';
 import StudentAssignments from './components/student/StudentAssignments';
 import StudentQuizzes from './components/student/StudentQuizzes';
 import StudentNotices from './components/student/StudentNotices';
+import StudentTaxonomy from './components/student/StudentTaxonomy';
 
 // Page titles map
 const pageTitles = {
@@ -50,6 +51,7 @@ const pageTitles = {
     quiz: 'Quiz Creator', announcements: 'Announcements', schedule: 'My Schedule',
     materials: 'Course Materials', notices: 'Notices', quizzes: 'Quizzes',
     profile: 'My Profile', password: 'Change Password', notifications: 'Notifications',
+    taxonomy: 'Taxonomy Explainer'
 };
 
 // Role portal wrapper
@@ -146,6 +148,8 @@ const App = () => {
                         <Route path="assignments" element={<Page comp={StudentAssignments} pageId="assignments" />} />
                         <Route path="quizzes" element={<Page comp={StudentQuizzes} pageId="quizzes" />} />
                         <Route path="notices" element={<Page comp={StudentNotices} pageId="notices" />} />
+                        <Route path="taxonomy" element={<Page comp={StudentTaxonomy} pageId="taxonomy" />} />
+
                         <Route path="profile" element={<Page comp={ProfilePage} pageId="profile" />} />
                         <Route path="password" element={<Page comp={ChangePassword} pageId="password" />} />
                         <Route path="notifications" element={<Page comp={NotificationsPage} pageId="notifications" />} />

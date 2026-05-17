@@ -128,3 +128,72 @@ exports.markNoticeRead = async (req, res) => {
         res.json({ message: 'Marked as read' });
     } catch (err) { res.status(500).json({ message: err.message }); }
 };
+
+// ── Taxonomy PDF Explainer ──────────────────────────────────────────
+const fs = require('fs');
+const path = require('path');
+const pdfParse = require('pdf-parse');
+const PDFDocument = require('pdfkit');
+
+exports.uploadTaxonomyPdf = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No PDF file uploaded' });
+        }
+
+        const inputPath = req.file.path;
+        const dataBuffer = fs.readFileSync(inputPath);
+        
+        // 1. Extract text from uploaded PDF
+        const data = await pdfParse(dataBuffer);
+        const extractedText = data.text;
+
+        // 2. Mock AI Explanation (Ideally replace with Gemini/OpenAI API call)
+        const explanation = `
+TAXONOMY EXPLANATION REPORT
+===========================
+File Analyzed: ${req.file.originalname}
+Number of Pages: ${data.numpages}
+
+SUMMARY OF CONTENT:
+We analyzed the uploaded document regarding taxonomy. The document discusses classification systems, hierarchical structures, and categorization.
+
+KEY CONCEPTS IDENTIFIED:
+- Hierarchical Classification: Organisms or concepts are arranged in a structured hierarchy.
+- Nomenclature: The system of naming elements consistently.
+- Categorization criteria: Based on shared characteristics.
+
+HOW TO USE THIS IN YOUR STUDIES:
+Understanding the taxonomy presented in this document helps in organizing complex information into manageable, logical groupings. 
+
+(Note: This is an auto-generated mock explanation. Integrate an AI API for dynamic content.)
+`;
+
+        // 3. Generate New PDF with Explanation
+        const outputFilename = `explanation_${Date.now()}_${req.file.originalname}`;
+        const outputPath = path.join(__dirname, '..', 'uploads', outputFilename);
+        
+        const doc = new PDFDocument();
+        const writeStream = fs.createWriteStream(outputPath);
+        doc.pipe(writeStream);
+        
+        doc.fontSize(20).text('Taxonomy PDF Explanation', { underline: true });
+        doc.moveDown();
+        doc.fontSize(12).text(explanation);
+        doc.end();
+
+        writeStream.on('finish', () => {
+            // Return the path to the newly generated PDF
+            res.json({
+                message: 'Explanation generated successfully',
+                originalFile: req.file.filename,
+                explanationFile: `/uploads/${outputFilename}`
+            });
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: err.message });
+    }
+};
+

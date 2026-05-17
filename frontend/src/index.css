@@ -6,56 +6,56 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --primary: #DAFF96;
-  --primary-hover: #CCF585;
-  --primary-muted: rgba(218, 255, 150, 0.10);
-  --primary-border: rgba(218, 255, 150, 0.20);
-  --primary-text: #000000;
+  --primary: #4B6BFB;
+  --primary-hover: #3A55D9;
+  --primary-muted: rgba(75, 107, 251, 0.10);
+  --primary-border: rgba(75, 107, 251, 0.20);
+  --primary-text: #FFFFFF;
 
-  --success: #16A34A;
-  --success-bg: rgba(22, 163, 74, 0.09);
-  --success-border: rgba(22, 163, 74, 0.20);
-  --success-text: #4ADE80;
+  --success: #10B981;
+  --success-bg: rgba(16, 185, 129, 0.09);
+  --success-border: rgba(16, 185, 129, 0.20);
+  --success-text: #059669;
 
-  --warning: #FFE5C6;
-  --warning-bg: rgba(255, 229, 198, 0.1);
-  --warning-border: rgba(255, 229, 198, 0.2);
-  --warning-text: #FFE5C6;
+  --warning: #F59E0B;
+  --warning-bg: rgba(245, 158, 11, 0.09);
+  --warning-border: rgba(245, 158, 11, 0.20);
+  --warning-text: #D97706;
 
-  --danger: #DC2626;
-  --danger-bg: rgba(220, 38, 38, 0.09);
-  --danger-border: rgba(220, 38, 38, 0.20);
-  --danger-text: #FCA5A5;
+  --danger: #EF4444;
+  --danger-bg: rgba(239, 68, 68, 0.09);
+  --danger-border: rgba(239, 68, 68, 0.20);
+  --danger-text: #DC2626;
 
-  --info: #A7D8DE;
-  --info-bg: rgba(167, 216, 222, 0.1);
-  --info-border: rgba(167, 216, 222, 0.2);
-  --info-text: #A7D8DE;
+  --info: #3B82F6;
+  --info-bg: rgba(59, 130, 246, 0.1);
+  --info-border: rgba(59, 130, 246, 0.2);
+  --info-text: #2563EB;
 
-  --bg-canvas:   #000000;
-  --bg-base:     #080808;
-  --bg-surface:  #121212;
-  --bg-elevated: #181818;
-  --bg-panel:    #121212;
-  --bg-card:     #1A1A1A;
-  --bg-input:    #1A1A1A;
-  --bg-hover:    rgba(255,255,255,0.05);
-  --bg-active:   rgba(218, 255, 150, 0.15);
+  --bg-canvas:   #F4F7FE;
+  --bg-base:     #FFFFFF;
+  --bg-surface:  #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-panel:    #FFFFFF;
+  --bg-card:     #FFFFFF;
+  --bg-input:    #F8FAFC;
+  --bg-hover:    rgba(0,0,0,0.03);
+  --bg-active:   rgba(75, 107, 251, 0.08);
 
-  --text-primary:   #FFFFFF;
-  --text-secondary: #999999;
-  --text-muted:     #666666;
-  --text-faint:     #333333;
+  --text-primary:   #1E293B;
+  --text-secondary: #475569;
+  --text-muted:     #94A3B8;
+  --text-faint:     #CBD5E1;
 
-  --border:       rgba(255,255,255,0.08);
-  --border-md:    rgba(255,255,255,0.12);
-  --border-focus: rgba(218, 255, 150, 0.50);
+  --border:       #E2E8F0;
+  --border-md:    #CBD5E1;
+  --border-focus: rgba(75, 107, 251, 0.50);
 
-  --shadow-xs:  0 1px 2px rgba(0,0,0,0.50);
-  --shadow-sm:  0 2px 4px rgba(0,0,0,0.60);
-  --shadow-md:  0 4px 12px rgba(0,0,0,0.70);
-  --shadow-lg:  0 8px 24px rgba(0,0,0,0.80);
-  --shadow-xl:  0 20px 48px rgba(0,0,0,0.90);
+  --shadow-xs:  0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm:  0 2px 4px rgba(0,0,0,0.06);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg:  0 10px 24px rgba(0,0,0,0.10);
+  --shadow-xl:  0 20px 48px rgba(0,0,0,0.12);
 
   --r-xs:   4px;
   --r-sm:   8px;

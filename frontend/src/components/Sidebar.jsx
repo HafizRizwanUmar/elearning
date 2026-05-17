@@ -41,6 +41,7 @@ const NAV_MAP = {
         { section: 'Tasks' },
         { id: 'assignments',   label: 'Assignments',  icon: MdAssignment,    path: '/student/assignments' },
         { id: 'notices',       label: 'Notices',      icon: MdCampaign,      path: '/student/notices' },
+        { id: 'taxonomy',      label: 'Taxonomy AI',  icon: MdAutoAwesome,   path: '/student/taxonomy' },
     ],
 };
 
