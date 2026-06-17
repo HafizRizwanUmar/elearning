@@ -1,4 +1,6 @@
-from passlib.hash import bcrypt
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 from flask import Blueprint, request, jsonify
 from database import get_db
 from auth import role_required
@@ -58,7 +60,7 @@ def add_student():
     for f in required:
         if not data.get(f):
             return jsonify({'message': f'{f} is required'}), 400
-    pw_hash = bcrypt.hash(data['password'])
+    pw_hash = pwd_context.hash(data['password'])
     conn = get_db()
     try:
         c = conn.cursor()
@@ -126,7 +128,7 @@ def add_teacher():
     for f in ['name','email','password']:
         if not data.get(f):
             return jsonify({'message': f'{f} is required'}), 400
-    pw_hash = bcrypt.hash(data['password'])
+    pw_hash = pwd_context.hash(data['password'])
     conn = get_db()
     try:
         c = conn.cursor()
