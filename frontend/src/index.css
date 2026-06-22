@@ -1474,3 +1474,50 @@ table, .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .admin-modal { border-radius: 16px; }
 }
 
+/* ===================================================================
+   TAXONOMY SLIDE VIEWER — Bloom's Taxonomy Feature
+   =================================================================== */
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(18px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+.taxonomy-slide-card {
+  animation: slideIn 0.28s cubic-bezier(0.16,1,0.3,1);
+}
+
+@keyframes badgePop {
+  0%   { opacity: 0; transform: scale(0.6) translateY(-6px); }
+  60%  { transform: scale(1.08) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.taxonomy-badge-animate {
+  animation: badgePop 0.35s cubic-bezier(0.16,1,0.3,1);
+}
+
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.thin-scroll::-webkit-scrollbar { width: 4px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 99px; }
+
+.slide-grid-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.slide-grid-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+:fullscreen .page-content {
+  background: var(--bg-canvas);
+  padding: 24px;
+  overflow: auto;
+}
+
+@media (max-width: 640px) {
+  .taxonomy-slide-card { padding: 20px 16px !important; }
+}
+

@@ -165,8 +165,8 @@ const TeacherGrades = () => {
                                         <td style={{ color: 'var(--text-muted)', width: 36 }}>{i + 1}</td>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                <div className="avatar avatar-sm" style={{ background: '#DAFF96', color: 'black' }}>{r.name[0]}</div>
-                                                <span style={{ fontWeight: 600, fontSize: 13 }}>{r.name}</span>
+                                                <div className="avatar avatar-sm" style={{ background: '#DAFF96', color: 'black' }}>{(r.name || '?')[0].toUpperCase()}</div>
+                                                <span style={{ fontWeight: 600, fontSize: 13 }}>{r.name || 'Unknown Student'}</span>
                                             </div>
                                         </td>
                                         <td><span className="badge badge-neutral">{r.sid || '—'}</span></td>

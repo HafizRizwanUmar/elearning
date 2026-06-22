@@ -20,6 +20,7 @@ import AdminTeachers from './components/admin/AdminTeachers';
 import AdminCourses from './components/admin/AdminCourses';
 import AdminReports from './components/admin/AdminReports';
 import AdminRoles from './components/admin/AdminRoles';
+import AdminNotifications from './components/admin/AdminNotifications';
 
 // Teacher
 import TeacherDashboard from './components/teacher/TeacherDashboard';
@@ -47,11 +48,11 @@ import StudentTaxonomy from './components/student/StudentTaxonomy';
 const pageTitles = {
     dashboard: 'Dashboard', students: 'Students', teachers: 'Teachers', courses: 'Courses',
     reports: 'Reports & Analytics', roles: 'User Roles', attendance: 'Attendance',
-    grades: 'Grades', assignments: 'Assignments', upload: 'Upload Slides',
+    grades: 'Grades', assignments: 'Assignments', upload: 'Taxonomy Slide Labeler',
     quiz: 'Quiz Creator', announcements: 'Announcements', schedule: 'My Schedule',
     materials: 'Course Materials', notices: 'Notices', quizzes: 'Quizzes',
-    profile: 'My Profile', password: 'Change Password', notifications: 'Notifications',
-    taxonomy: 'Taxonomy Explainer'
+    profile: 'My Profile', password: 'Change Password', notifications: 'Notification Center',
+    taxonomy: 'Taxonomy Slide Viewer'
 };
 
 // Role portal wrapper
@@ -107,9 +108,9 @@ const App = () => {
                         <Route path="courses" element={<Page comp={AdminCourses} pageId="courses" />} />
                         <Route path="reports" element={<Page comp={AdminReports} pageId="reports" />} />
                         <Route path="roles" element={<Page comp={AdminRoles} pageId="roles" />} />
+                        <Route path="notifications" element={<Page comp={AdminNotifications} pageId="notifications" />} />
                         <Route path="profile" element={<Page comp={ProfilePage} pageId="profile" />} />
                         <Route path="password" element={<Page comp={ChangePassword} pageId="password" />} />
-                        <Route path="notifications" element={<Page comp={NotificationsPage} pageId="notifications" />} />
                         <Route path="*" element={<Navigate to="/admin/dashboard" />} />
                     </Routes>
                 </Portal>

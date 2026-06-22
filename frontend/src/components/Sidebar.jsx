@@ -3,32 +3,35 @@ import { AuthContext } from '../context/AuthContext';
 import {
     MdDashboard, MdPeople, MdSchool, MdMenuBook, MdAssignment,
     MdEventAvailable, MdBarChart, MdAdminPanelSettings, MdCampaign,
-    MdCalendarMonth, MdNotifications, MdStar, MdLock, MdLogout, MdAutoAwesome
+    MdCalendarMonth, MdNotifications, MdStar, MdLock, MdLogout, MdAutoAwesome,
+    MdUpload, MdSend
 } from 'react-icons/md';
 
 const NAV_MAP = {
     Admin: [
         { section: 'Overview' },
-        { id: 'dashboard',     label: 'Dashboard',    icon: MdDashboard,          path: '/admin/dashboard' },
+        { id: 'dashboard',     label: 'Dashboard',          icon: MdDashboard,          path: '/admin/dashboard' },
         { section: 'Management' },
-        { id: 'students',      label: 'Students',     icon: MdPeople,             path: '/admin/students' },
-        { id: 'teachers',      label: 'Teachers',     icon: MdSchool,             path: '/admin/teachers' },
-        { id: 'courses',       label: 'Courses',      icon: MdMenuBook,           path: '/admin/courses' },
+        { id: 'students',      label: 'Students',           icon: MdPeople,             path: '/admin/students' },
+        { id: 'teachers',      label: 'Teachers',           icon: MdSchool,             path: '/admin/teachers' },
+        { id: 'courses',       label: 'Courses',            icon: MdMenuBook,           path: '/admin/courses' },
         { section: 'System' },
-        { id: 'roles',         label: 'User Roles',   icon: MdAdminPanelSettings, path: '/admin/roles' },
-        { id: 'reports',       label: 'Reports',      icon: MdBarChart,           path: '/admin/reports' },
+        { id: 'roles',         label: 'User Roles',         icon: MdAdminPanelSettings, path: '/admin/roles' },
+        { id: 'reports',       label: 'Reports',            icon: MdBarChart,           path: '/admin/reports' },
+        { id: 'notifications', label: 'Notification Center',icon: MdSend,               path: '/admin/notifications' },
     ],
     Teacher: [
         { section: 'Overview' },
-        { id: 'dashboard',     label: 'Dashboard',    icon: MdDashboard,     path: '/teacher/dashboard' },
+        { id: 'dashboard',     label: 'Dashboard',       icon: MdDashboard,     path: '/teacher/dashboard' },
         { section: 'Teaching' },
-        { id: 'courses',       label: 'My Courses',   icon: MdMenuBook,      path: '/teacher/courses' },
-        { id: 'students',      label: 'Students',     icon: MdPeople,        path: '/teacher/students' },
-        { id: 'attendance',    label: 'Attendance',   icon: MdEventAvailable, path: '/teacher/attendance' },
-        { id: 'grades',        label: 'Grades',       icon: MdStar,          path: '/teacher/grades' },
+        { id: 'courses',       label: 'My Courses',      icon: MdMenuBook,      path: '/teacher/courses' },
+        { id: 'students',      label: 'Students',        icon: MdPeople,        path: '/teacher/students' },
+        { id: 'attendance',    label: 'Mark Attendance', icon: MdEventAvailable, path: '/teacher/attendance' },
+        { id: 'grades',        label: 'Grades',          icon: MdStar,          path: '/teacher/grades' },
         { section: 'Content' },
-        { id: 'assignments',   label: 'Assignments',  icon: MdAssignment,    path: '/teacher/assignments' },
-        { id: 'announcements', label: 'Announcements',icon: MdCampaign,      path: '/teacher/announcements' },
+        { id: 'upload',        label: 'Taxonomy Slides', icon: MdUpload,        path: '/teacher/upload' },
+        { id: 'assignments',   label: 'Assignments',     icon: MdAssignment,    path: '/teacher/assignments' },
+        { id: 'announcements', label: 'Announcements',   icon: MdCampaign,      path: '/teacher/announcements' },
     ],
     Student: [
         { section: 'Overview' },
@@ -38,10 +41,10 @@ const NAV_MAP = {
         { id: 'schedule',      label: 'Schedule',     icon: MdCalendarMonth, path: '/student/schedule' },
         { id: 'grades',        label: 'My Grades',    icon: MdStar,          path: '/student/grades' },
         { id: 'attendance',    label: 'Attendance',   icon: MdEventAvailable,path: '/student/attendance' },
-        { section: 'Tasks' },
+        { section: 'Learning' },
+        { id: 'taxonomy',      label: 'Taxonomy Slides', icon: MdAutoAwesome,path: '/student/taxonomy' },
         { id: 'assignments',   label: 'Assignments',  icon: MdAssignment,    path: '/student/assignments' },
         { id: 'notices',       label: 'Notices',      icon: MdCampaign,      path: '/student/notices' },
-        { id: 'taxonomy',      label: 'Taxonomy AI',  icon: MdAutoAwesome,   path: '/student/taxonomy' },
     ],
 };
 
