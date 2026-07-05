@@ -3,3 +3,6 @@ flask-cors==4.0.1
 pyjwt==2.8.0
 passlib==1.7.4
 python-dotenv==1.0.1
+openai>=1.0.0
+python-pptx>=0.6.21
+pypdf>=4.0.0

@@ -1,330 +1,722 @@
-import React, { useState, useEffect, useRef } from 'react';
-import JSZip from 'jszip';
+import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
+
 import {
-    MdOutlineSlideshow, MdSave, MdCheckCircle, MdChevronLeft, MdChevronRight,
-    MdCircle, MdShare, MdInfo, MdGridView, MdViewSidebar
+    MdCloudUpload, MdAutoAwesome, MdShare, MdCheckCircle,
+    MdChevronLeft, MdChevronRight, MdLightbulb, MdSchool,
+    MdClose, MdInfo, MdOutlineSlideshow, MdRefresh
 } from 'react-icons/md';
+import { AuthContext } from '../../context/AuthContext';
 
 /* ─── Bloom's Taxonomy Levels ─────────────────────────────────────── */
 const BLOOM_LEVELS = [
-    { id: 'remember',   label: 'Remember',   color: '#6366F1', bg: 'rgba(99,102,241,0.13)',   emoji: '🧠', verbs: 'Recall, List, Name, Define' },
-    { id: 'understand', label: 'Understand',  color: '#3B82F6', bg: 'rgba(59,130,246,0.13)',   emoji: '💡', verbs: 'Explain, Summarize, Classify' },
-    { id: 'apply',      label: 'Apply',       color: '#10B981', bg: 'rgba(16,185,129,0.13)',   emoji: '🔧', verbs: 'Demonstrate, Solve, Execute' },
-    { id: 'analyze',    label: 'Analyze',     color: '#F59E0B', bg: 'rgba(245,158,11,0.13)',   emoji: '🔍', verbs: 'Differentiate, Compare, Examine' },
-    { id: 'evaluate',   label: 'Evaluate',    color: '#EF4444', bg: 'rgba(239,68,68,0.13)',    emoji: '⚖️', verbs: 'Judge, Critique, Justify' },
-    { id: 'create',     label: 'Create',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.13)',   emoji: '✨', verbs: 'Design, Build, Construct' },
+    { id: 'remember',   label: 'Remember',   color: '#6366F1', bg: 'rgba(99,102,241,0.12)',  emoji: '🧠', verbs: 'Recall · List · Name · Define',          pyramid: 1 },
+    { id: 'understand', label: 'Understand',  color: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  emoji: '💡', verbs: 'Explain · Summarize · Classify',           pyramid: 2 },
+    { id: 'apply',      label: 'Apply',       color: '#10B981', bg: 'rgba(16,185,129,0.12)',  emoji: '🔧', verbs: 'Demonstrate · Solve · Execute',            pyramid: 3 },
+    { id: 'analyze',    label: 'Analyze',     color: '#F59E0B', bg: 'rgba(245,158,11,0.12)',  emoji: '🔍', verbs: 'Differentiate · Compare · Examine',        pyramid: 4 },
+    { id: 'evaluate',   label: 'Evaluate',    color: '#EF4444', bg: 'rgba(239,68,68,0.12)',   emoji: '⚖️', verbs: 'Judge · Critique · Justify',              pyramid: 5 },
+    { id: 'create',     label: 'Create',      color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)',  emoji: '✨', verbs: 'Design · Build · Construct',              pyramid: 6 },
 ];
 
-/* ─── PPTX Parser ─────────────────────────────────────────────────── */
-const parseSlides = async () => {
-    const res = await fetch('/FlutterWebEmulator.pptx');
-    if (!res.ok) throw new Error('Could not fetch presentation file.');
-    const buf = await res.arrayBuffer();
-    const zip = await JSZip.loadAsync(buf);
+const getLevel = (id) => BLOOM_LEVELS.find(l => l.id === id);
 
-    const slideKeys = Object.keys(zip.files)
-        .filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n))
-        .sort((a, b) => {
-            const na = parseInt(a.match(/slide(\d+)\.xml$/)[1]);
-            const nb = parseInt(b.match(/slide(\d+)\.xml$/)[1]);
-            return na - nb;
-        });
-
-    const slides = [];
-    for (let i = 0; i < slideKeys.length; i++) {
-        const xml = await zip.files[slideKeys[i]].async('string');
-        const textMatches = [...xml.matchAll(/<a:t[^>]*>([^<]+)<\/a:t>/g)];
-        const texts = textMatches
-            .map(m => m[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#xA;/g, ' ').trim())
-            .filter(t => t.length > 1);
-
-        const title = texts.find(t => t.length > 2) || `Slide ${i + 1}`;
-        const bullets = [...new Set(texts.filter(t => t !== title))].slice(0, 6);
-
-        slides.push({ id: i + 1, number: i + 1, title, bullets, taxonomyLevel: null });
+/* ─── PDF Upload (Backend) ────────────────────────────────────────── */
+const uploadPdf = async (file, token) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/teacher/taxonomy/upload-pdf', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Upload failed');
     }
-    return slides;
+    return await res.json();
 };
 
-/* ─── Component ───────────────────────────────────────────────────── */
-const TeacherUpload = () => {
-    const [slides, setSlides]           = useState([]);
-    const [loading, setLoading]         = useState(true);
-    const [error, setError]             = useState('');
-    const [selected, setSelected]       = useState(0);
-    const [saving, setSaving]           = useState(false);
-    const [saved, setSaved]             = useState(false);
-    const [viewMode, setViewMode]       = useState('split'); // 'split' | 'grid'
-    const filmstripRef                  = useRef(null);
+/* ─── Animated loading dots ───────────────────────────────────────── */
+const AnalyzingScreen = ({ message }) => (
+    <div className="page-content animate-fade">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '65vh', gap: 28 }}>
+            {/* Pulsing robot */}
+            <div style={{ position: 'relative', width: 88, height: 88 }}>
+                <div className="spinner" style={{ width: 88, height: 88, borderWidth: 5, borderColor: 'var(--primary)', borderTopColor: 'transparent' }} />
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36 }}>🤖</div>
+            </div>
 
-    /* load PPTX */
-    useEffect(() => {
-        const cfg = localStorage.getItem('classeta_taxonomy_config');
-        parseSlides()
-            .then(parsed => {
-                if (cfg) {
-                    const map = JSON.parse(cfg);
-                    setSlides(parsed.map(s => ({ ...s, taxonomyLevel: map[s.id] || null })));
-                } else {
-                    setSlides(parsed);
-                }
-                setLoading(false);
-            })
-            .catch(err => { setError(err.message); setLoading(false); });
-    }, []);
+            <div style={{ textAlign: 'center', maxWidth: 380 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em' }}>
+                    AI is Analyzing Your Slides
+                </div>
+                <div style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, minHeight: 22 }}>
+                    {message}
+                </div>
+            </div>
 
-    /* scroll filmstrip to selected slide */
-    useEffect(() => {
-        if (!filmstripRef.current) return;
-        const item = filmstripRef.current.querySelector(`[data-idx="${selected}"]`);
-        if (item) item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }, [selected]);
+            {/* Bloom's pulsing dots */}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                {BLOOM_LEVELS.map((l, i) => (
+                    <div key={l.id} title={l.label} style={{
+                        width: 12, height: 12, borderRadius: '50%',
+                        background: l.color,
+                        animation: `pulse 1.8s ease-in-out ${i * 0.25}s infinite`,
+                    }} />
+                ))}
+            </div>
+        </div>
+    </div>
+);
 
-    const setTaxonomy = (slideId, levelId) => {
-        setSlides(prev => prev.map(s => s.id === slideId ? { ...s, taxonomyLevel: levelId } : s));
-    };
+/* ─── Upload Drop Zone ────────────────────────────────────────────── */
+const UploadZone = ({ onFile, error, presentations, onOpen, onAnalyze, onShare }) => {
+    const [drag, setDrag] = useState(false);
+    const inputRef = useRef(null);
 
-    const navigate = (dir) => {
-        setSelected(prev => Math.max(0, Math.min(slides.length - 1, prev + dir)));
-    };
+    const handleDrop = useCallback((e) => {
+        e.preventDefault();
+        setDrag(false);
+        const f = e.dataTransfer.files[0];
+        if (f) onFile(f);
+    }, [onFile]);
 
-    const shareWithStudents = async () => {
-        setSaving(true);
-        const cfg = {}; slides.forEach(s => { cfg[s.id] = s.taxonomyLevel; });
-        localStorage.setItem('classeta_taxonomy_config', JSON.stringify(cfg));
-        localStorage.setItem('classeta_taxonomy_slides', JSON.stringify(slides));
-        localStorage.setItem('classeta_taxonomy_shared', 'true');
-        localStorage.setItem('classeta_taxonomy_shared_at', new Date().toISOString());
-        await new Promise(r => setTimeout(r, 900));
-        setSaving(false);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 3500);
-    };
-
-    const labeled    = slides.filter(s => s.taxonomyLevel).length;
-    const pct        = slides.length ? Math.round((labeled / slides.length) * 100) : 0;
-    const current    = slides[selected];
-    const currLevel  = BLOOM_LEVELS.find(l => l.id === current?.taxonomyLevel);
-
-    /* ── loading / error ── */
-    if (loading) return (
+    return (
         <div className="page-content animate-fade">
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'60vh', gap:16 }}>
-                <div className="spinner" style={{ width:44, height:44, borderWidth:4 }} />
-                <p style={{ color:'var(--text-muted)', fontSize:14 }}>Parsing presentation slides…</p>
+            {/* Header */}
+            <div style={{ marginBottom: 28 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg,#6366F1,#8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🤖</div>
+                    <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em' }}>
+                        Taxonomy Slide Analyzer
+                    </h1>
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 520 }}>
+                    Upload your PDF presentation. You can share it directly or ask AI to analyze and generate taxonomy improvement suggestions.
+                </p>
+            </div>
+
+            {/* Error */}
+            {error && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 'var(--r-md)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#EF4444', fontSize: 13, marginBottom: 16 }}>
+                    <span style={{ fontSize: 16 }}>⚠️</span> {error}
+                </div>
+            )}
+
+            {/* Two Column Layout for Drop Zone & Recent */}
+            <div style={{ display: 'grid', gridTemplateColumns: presentations?.length > 0 ? 'minmax(0, 1fr) 340px' : '1fr', gap: 28, alignItems: 'start' }}>
+                
+                {/* Drop Zone */}
+                <div
+                    onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                    onDragLeave={() => setDrag(false)}
+                    onDrop={handleDrop}
+                    onClick={() => inputRef.current?.click()}
+                    style={{
+                        border: `2px dashed ${drag ? 'var(--primary)' : 'var(--border)'}`,
+                        borderRadius: 'var(--r-xl)',
+                        padding: '72px 40px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        background: drag ? 'rgba(99,102,241,0.06)' : 'var(--bg-card)',
+                        transition: 'all 0.25s ease',
+                        position: 'relative',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center'
+                    }}
+                >
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        accept=".pdf"
+                        style={{ display: 'none' }}
+                        onChange={(e) => onFile(e.target.files[0])}
+                    />
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                        <div style={{
+                            width: 72, height: 72, borderRadius: '50%',
+                            background: 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.15))',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '1px solid rgba(99,102,241,0.2)'
+                        }}>
+                            <MdCloudUpload size={36} style={{ color: 'var(--primary)', opacity: drag ? 1 : 0.7 }} />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6, color: drag ? 'var(--primary)' : 'var(--text-primary)' }}>
+                                {drag ? 'Drop your file here!' : 'Upload Presentation'}
+                            </div>
+                            <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+                                Drag & drop your <strong>.pdf</strong> file or click to browse
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            {['PDF Document', 'Max 20 MB'].map(t => (
+                                <span key={t} style={{ padding: '4px 12px', background: 'var(--bg-input)', borderRadius: 99, fontSize: 11, color: 'var(--text-muted)', border: '1px solid var(--border)' }}>{t}</span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Presentations List */}
+                {presentations && presentations.length > 0 && (
+                    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-xl)', padding: 20 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                            <MdOutlineSlideshow size={18} style={{ color: 'var(--primary)' }} />
+                            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
+                                Your Presentations
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 340, overflowY: 'auto', paddingRight: 4 }} className="thin-scroll">
+                            {presentations.map((p, i) => (
+                                <div 
+                                    key={p.id || i}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', gap: 10,
+                                        padding: '14px', background: 'var(--bg-input)', border: '1px solid var(--border)',
+                                        borderRadius: 'var(--r-md)'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ minWidth: 0, paddingRight: 10 }}>
+                                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {p.filename}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                                                {p.slides?.length || 0} slides · Uploaded {new Date(p.uploadedAt || p.sharedAt || Date.now()).toLocaleDateString()}
+                                                {p.analyzed && <span style={{ color: '#10B981', marginLeft: 8 }}>✓ Analyzed</span>}
+                                                {p.shared && <span style={{ color: '#3B82F6', marginLeft: 8 }}>✓ Shared</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        <button className="btn btn-primary btn-sm" onClick={() => onOpen(p)} style={{ flex: 1, justifyContent: 'center', padding: '6px 10px', fontSize: 12 }}>
+                                            Open Slide
+                                        </button>
+                                        {!p.analyzed && (
+                                            <button className="btn btn-ghost btn-sm" onClick={() => onAnalyze(p)} style={{ flex: 1, justifyContent: 'center', padding: '6px 10px', fontSize: 12 }}>
+                                                <MdAutoAwesome size={14} /> Analyze
+                                            </button>
+                                        )}
+                                        <button className="btn btn-ghost btn-sm" onClick={() => onShare(p)} style={{ flex: 1, justifyContent: 'center', padding: '6px 10px', fontSize: 12 }} disabled={p.shared}>
+                                            <MdShare size={14} /> {p.shared ? 'Shared' : 'Share'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Bloom's legend cards */}
+            <div style={{ marginTop: 32 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>
+                    What AI will classify per slide
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10 }}>
+                    {BLOOM_LEVELS.map(l => (
+                        <div key={l.id} style={{ background: l.bg, border: `1px solid ${l.color}33`, borderRadius: 'var(--r-md)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span style={{ fontSize: 22 }}>{l.emoji}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: l.color }}>{l.label}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>{l.verbs}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
+};
 
-    if (error) return (
-        <div className="page-content animate-fade">
-            <div className="alert alert-error" style={{ marginBottom:16 }}>{error}</div>
-            <p style={{ color:'var(--text-muted)', fontSize:13 }}>
-                Ensure <strong>FlutterWebEmulator.pptx</strong> exists in the <code>/public</code> folder.
-            </p>
-        </div>
+/* ─── Main Component ──────────────────────────────────────────────── */
+const TeacherUpload = () => {
+    const { user } = useContext(AuthContext);
+    const [phase, setPhase]         = useState('upload');   // 'upload' | 'analyzing' | 'results'
+    const [slides, setSlides]       = useState([]);
+    const [selected, setSelected]   = useState(0);
+    const [file, setFile]           = useState(null);
+    const [pdfUrl, setPdfUrl]       = useState(null);
+    const [sharing, setSharing]     = useState(false);
+    const [shared, setShared]       = useState(false);
+    const [error, setError]         = useState('');
+    const [progress, setProgress]   = useState('');
+    const [presentations, setPresentations] = useState([]);
+    const [activeId, setActiveId]   = useState(null);
+    const filmstripRef              = useRef(null);
+
+    // load on mount
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('classeta_teacher_presentations');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) setPresentations(parsed);
+            } else {
+                const rawShared = localStorage.getItem('classeta_taxonomy_presentations');
+                if (rawShared) {
+                    const parsed = JSON.parse(rawShared);
+                    if (Array.isArray(parsed)) {
+                        const migrated = parsed.map(p => ({...p, shared: true, analyzed: true})).reverse();
+                        setPresentations(migrated);
+                        localStorage.setItem('classeta_teacher_presentations', JSON.stringify(migrated));
+                    }
+                }
+            }
+        } catch(e){}
+    }, []);
+
+    const openSlide = (pres) => {
+        setSlides(pres.slides || []);
+        setPdfUrl(pres.pdfUrl || null);
+        setSelected(0);
+        setPhase('results');
+        setFile({ name: pres.filename });
+        setActiveId(pres.id);
+    };
+
+    const MESSAGES = [
+        'Uploading presentation text…',
+        'Classifying Bloom\'s Taxonomy levels…',
+        'Generating improvement suggestions…',
+        'Creating student learning questions…',
+        'Finalizing analysis…',
+    ];
+
+    const handleFile = async (f) => {
+        if (!f) return;
+        if (!f.name.toLowerCase().endsWith('.pdf')) {
+            setError('Only .pdf files are supported. Please upload a PDF file.');
+            return;
+        }
+        if (f.size > 20 * 1024 * 1024) {
+            setError('File is too large. Maximum size is 20 MB.');
+            return;
+        }
+        setError('');
+        setFile(f);
+        setPhase('analyzing');
+        setProgress('Uploading PDF and extracting text...');
+        
+        try {
+            const parsed = await uploadPdf(f, user?.token);
+            if (!parsed.slides || parsed.slides.length === 0) {
+                setError('No text could be extracted from this presentation.');
+                setPhase('upload');
+                setFile(null);
+                return;
+            }
+            
+            const newPres = {
+                id: Date.now(),
+                filename: f.name,
+                pdfUrl: parsed.pdfUrl,
+                slides: parsed.slides,
+                uploadedAt: new Date().toISOString(),
+                shared: false,
+                analyzed: false
+            };
+            
+            const updated = [newPres, ...presentations];
+            setPresentations(updated);
+            localStorage.setItem('classeta_teacher_presentations', JSON.stringify(updated));
+            
+            setPhase('upload'); // Stay on upload screen
+            setFile(null); // Clear currently uploading file
+        } catch (e) {
+            setError('Failed to upload the presentation: ' + e.message);
+            setPhase('upload');
+            setFile(null);
+        }
+    };
+
+    const analyzeWithAI = async (presToAnalyze) => {
+        const targetPres = presToAnalyze?.id ? presToAnalyze : presentations.find(p => p.id === activeId);
+        const slidesToUse = targetPres?.slides || slides;
+        if (!slidesToUse || !slidesToUse.length) return;
+        
+        if (targetPres) {
+            setActiveId(targetPres.id);
+            setSlides(targetPres.slides);
+            setPdfUrl(targetPres.pdfUrl);
+            setFile({ name: targetPres.filename });
+        }
+
+        setPhase('analyzing');
+        setError('');
+        setProgress(MESSAGES[0]);
+
+        let msgIdx = 0;
+        const interval = setInterval(() => {
+            msgIdx = Math.min(msgIdx + 1, MESSAGES.length - 1);
+            setProgress(MESSAGES[msgIdx]);
+        }, 1800);
+
+        try {
+            const res = await fetch('/api/teacher/taxonomy/analyze-text', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${user?.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ slides: slidesToUse }),
+            });
+
+            clearInterval(interval);
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message || 'Analysis failed. Please try again.');
+            }
+
+            const data = await res.json();
+            
+            const aiMap = {};
+            (data.slides || []).forEach(s => { aiMap[s.id] = s; });
+            
+            let newSlides = slidesToUse.map(s => {
+                const aiData = aiMap[s.id];
+                if (!aiData) return s;
+                return {
+                    ...s,
+                    taxonomyLevel: aiData.taxonomyLevel,
+                    aiNotes: aiData.aiNotes,
+                    suggestions: aiData.suggestions,
+                    studentQuestions: aiData.studentQuestions,
+                    studentExplanation: aiData.studentExplanation
+                };
+            });
+            
+            setSlides(newSlides);
+            
+            if (targetPres) {
+                setPresentations(prev => {
+                    const updated = prev.map(p => p.id === targetPres.id ? { ...p, slides: newSlides, analyzed: true } : p);
+                    localStorage.setItem('classeta_teacher_presentations', JSON.stringify(updated));
+                    return updated;
+                });
+            }
+            
+            setPhase('results');
+        } catch (e) {
+            clearInterval(interval);
+            setError(e.message);
+            setPhase('results');
+        }
+    };
+
+    const resetUpload = () => {
+        setFile(null);
+        setSlides([]);
+        setPhase('upload');
+        setError('');
+        setShared(false);
+    };
+
+    const shareWithStudents = async (presToShare) => {
+        const pres = presToShare?.id ? presToShare : presentations.find(p => p.id === activeId);
+        if (!pres) return;
+        
+        setSharing(true);
+        
+        const sharedPres = {
+            ...pres,
+            sharedAt: new Date().toISOString(),
+            shared: true
+        };
+        
+        // update teacher
+        setPresentations(prev => {
+            const updated = prev.map(p => p.id === pres.id ? sharedPres : p);
+            localStorage.setItem('classeta_teacher_presentations', JSON.stringify(updated));
+            return updated;
+        });
+
+        // update student view
+        let existingShared = [];
+        try {
+            const raw = localStorage.getItem('classeta_taxonomy_presentations');
+            if (raw) existingShared = JSON.parse(raw);
+        } catch(e){}
+        
+        existingShared = existingShared.filter(p => p.id !== pres.id);
+        existingShared.push(sharedPres);
+        localStorage.setItem('classeta_taxonomy_presentations', JSON.stringify(existingShared));
+
+        // keep legacy keys just in case
+        const cfg = {};
+        sharedPres.slides.forEach(s => { cfg[s.id] = s.taxonomyLevel; });
+        localStorage.setItem('classeta_taxonomy_config', JSON.stringify(cfg));
+        localStorage.setItem('classeta_taxonomy_slides', JSON.stringify(sharedPres.slides));
+        if (sharedPres.pdfUrl) localStorage.setItem('classeta_taxonomy_pdfUrl', sharedPres.pdfUrl);
+        localStorage.setItem('classeta_taxonomy_shared', 'true');
+        localStorage.setItem('classeta_taxonomy_shared_at', sharedPres.sharedAt);
+
+        await new Promise(r => setTimeout(r, 700));
+        setSharing(false);
+        setShared(true);
+        setTimeout(() => {
+            setShared(false);
+        }, 2000);
+    };
+
+    /* ── Phases: upload / analyzing ── */
+    if (phase === 'upload') return (
+        <UploadZone error={error} onFile={handleFile} presentations={presentations} onOpen={openSlide} onAnalyze={analyzeWithAI} onShare={shareWithStudents} />
     );
+
+    if (phase === 'analyzing') return <AnalyzingScreen message={progress} />;
+
+    /* ── Results Phase ── */
+
+    const current   = slides[selected];
+    const currLevel = getLevel(current?.taxonomyLevel);
 
     return (
         <div className="page-content animate-fade" style={{ paddingBottom: 0 }}>
 
             {/* ─── Header ─── */}
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:12 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
                 <div>
-                    <h1 style={{ fontSize:22, fontWeight:700, letterSpacing:'-0.03em', marginBottom:4 }}>
-                        Taxonomy Slide Labeler
+                    <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 4 }}>
+                        🤖 AI Analysis Complete
                     </h1>
-                    <p style={{ color:'var(--text-muted)', fontSize:13 }}>
-                        Assign Bloom's Taxonomy levels to each slide, then share with students.
+                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                        <MdOutlineSlideshow size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                        {file?.name} · {slides.length} slides analyzed
                     </p>
                 </div>
 
-                <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-                    {/* view toggle */}
-                    <div style={{ display:'flex', background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', overflow:'hidden' }}>
-                        {[['split', MdViewSidebar], ['grid', MdGridView]].map(([m, Icon]) => (
-                            <button key={m} onClick={() => setViewMode(m)}
-                                style={{ padding:'7px 12px', border:'none', cursor:'pointer', background: viewMode===m ? 'var(--primary)' : 'transparent', color: viewMode===m ? '#fff' : 'var(--text-muted)', transition:'var(--t-fast)', display:'flex', alignItems:'center' }}>
-                                <Icon size={16} />
-                            </button>
-                        ))}
-                    </div>
-
-                    <button className="btn btn-primary" onClick={shareWithStudents} disabled={saving || saved}>
-                        {saving ? <><div className="spinner" style={{ width:14, height:14, borderWidth:2 }} /> Saving…</>
-                         : saved ? <><MdCheckCircle size={16} /> Shared!</>
-                         : <><MdShare size={16} /> Share with Students</>}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button className="btn btn-ghost" onClick={resetUpload}>
+                        <MdRefresh size={15} /> Upload New File
+                    </button>
+                    {!slides.some(s => s.taxonomyLevel) && (
+                        <button className="btn btn-primary" onClick={analyzeWithAI} style={{ gap: 6 }}>
+                            <MdAutoAwesome size={15} /> Analyze with AI
+                        </button>
+                    )}
+                    <button className="btn btn-primary" onClick={shareWithStudents} disabled={sharing || shared}>
+                        {sharing
+                            ? <><div className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} /> Sharing…</>
+                            : shared
+                                ? <><MdCheckCircle size={15} /> Shared with Students!</>
+                                : <><MdShare size={15} /> Share with Students</>
+                        }
                     </button>
                 </div>
             </div>
 
-            {/* ─── Progress bar ─── */}
-            <div style={{ marginBottom:20, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'var(--r-md)', padding:'14px 18px' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                    <span style={{ fontSize:13, fontWeight:600, color:'var(--text-secondary)' }}>
-                        <MdOutlineSlideshow size={15} style={{ verticalAlign:'middle', marginRight:6 }} />
-                        FlutterWebEmulator.pptx — {slides.length} slides
-                    </span>
-                    <span style={{ fontSize:12, color:'var(--text-muted)' }}>{labeled} / {slides.length} labeled ({pct}%)</span>
-                </div>
-                <div style={{ height:6, background:'var(--bg-input)', borderRadius:99, overflow:'hidden' }}>
-                    <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#4B6BFB,#8B5CF6)', borderRadius:99, transition:'width 0.5s ease' }} />
-                </div>
-
-                {/* level counters */}
-                <div style={{ display:'flex', gap:6, marginTop:10, flexWrap:'wrap' }}>
-                    {BLOOM_LEVELS.map(l => {
-                        const cnt = slides.filter(s => s.taxonomyLevel === l.id).length;
-                        if (!cnt) return null;
-                        return (
-                            <span key={l.id} style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:99, background:l.bg, color:l.color, border:`1px solid ${l.color}33` }}>
-                                {l.emoji} {l.label}: {cnt}
-                            </span>
-                        );
-                    })}
-                </div>
+            {/* ─── Taxonomy distribution chips ─── */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+                {BLOOM_LEVELS.map(l => {
+                    const cnt = slides.filter(s => s.taxonomyLevel === l.id).length;
+                    if (!cnt) return null;
+                    return (
+                        <button key={l.id}
+                            onClick={() => {
+                                const idx = slides.findIndex(s => s.taxonomyLevel === l.id);
+                                if (idx >= 0) setSelected(idx);
+                            }}
+                            style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 99, background: l.bg, color: l.color, border: `1px solid ${l.color}33`, cursor: 'pointer', transition: 'var(--t-fast)' }}
+                        >
+                            {l.emoji} {l.label} <span style={{ opacity: 0.7 }}>×{cnt}</span>
+                        </button>
+                    );
+                })}
             </div>
 
-            {/* ─── Grid view ─── */}
-            {viewMode === 'grid' && (
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:14, paddingBottom:24 }}>
+            {/* ─── 3-column layout: filmstrip | slide preview | AI panel ─── */}
+            <div style={{ display: 'flex', gap: 14, height: 'calc(100vh - 278px)', minHeight: 520, paddingBottom: 24 }}>
+
+                {/* ── Filmstrip ── */}
+                <div ref={filmstripRef} style={{ width: 168, flexShrink: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }} className="thin-scroll">
                     {slides.map((s, i) => {
-                        const lv = BLOOM_LEVELS.find(l => l.id === s.taxonomyLevel);
+                        const lv = getLevel(s.taxonomyLevel);
+                        const isActive = i === selected;
                         return (
-                            <div key={s.id} onClick={() => { setSelected(i); setViewMode('split'); }}
-                                style={{ background:'var(--bg-card)', border:`2px solid ${lv ? lv.color+'55' : 'var(--border)'}`, borderRadius:'var(--r-md)', padding:14, cursor:'pointer', transition:'var(--t-fast)' }}
-                                className="slide-grid-card">
-                                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                                    <span style={{ fontSize:11, color:'var(--text-muted)', fontWeight:600 }}>Slide {s.number}</span>
-                                    {lv && <span style={{ fontSize:10, padding:'2px 8px', borderRadius:99, background:lv.bg, color:lv.color, fontWeight:700 }}>{lv.emoji} {lv.label}</span>}
+                            <button key={s.id} onClick={() => setSelected(i)}
+                                style={{
+                                    textAlign: 'left', padding: '10px 12px', borderRadius: 'var(--r-md)', border: 'none',
+                                    outline: `2px solid ${isActive ? (lv?.color || 'var(--primary)') : lv ? lv.color + '40' : 'var(--border)'}`,
+                                    background: isActive ? (lv?.bg || 'var(--primary-muted)') : 'var(--bg-card)',
+                                    cursor: 'pointer', transition: 'var(--t-fast)', flexShrink: 0,
+                                    boxShadow: isActive ? `0 4px 16px ${lv?.color || 'var(--primary)'}33` : 'none'
+                                }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: isActive && lv ? lv.color : 'var(--text-muted)' }}>#{s.number}</span>
+                                    {lv && <span style={{ fontSize: 13 }}>{lv.emoji}</span>}
                                 </div>
-                                <div style={{ fontSize:12, fontWeight:700, color:'var(--text-primary)', lineHeight:1.4, marginBottom:6, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{s.title}</div>
-                                {!s.taxonomyLevel && <div style={{ fontSize:11, color:'var(--warning)', fontWeight:500 }}>⚠ Not labeled</div>}
-                            </div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 4 }}>
+                                    {s.title}
+                                </div>
+                                {lv && (
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: lv.color, background: lv.bg, padding: '2px 6px', borderRadius: 99 }}>
+                                        {lv.label}
+                                    </span>
+                                )}
+                            </button>
                         );
                     })}
                 </div>
-            )}
 
-            {/* ─── Split view ─── */}
-            {viewMode === 'split' && (
-                <div style={{ display:'flex', gap:16, height:'calc(100vh - 310px)', minHeight:480, paddingBottom:24 }}>
-
-                    {/* Filmstrip */}
-                    <div ref={filmstripRef} style={{ width:180, flexShrink:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:6, paddingRight:4 }} className="thin-scroll">
-                        {slides.map((s, i) => {
-                            const lv = BLOOM_LEVELS.find(l => l.id === s.taxonomyLevel);
-                            const isActive = i === selected;
-                            return (
-                                <button key={s.id} data-idx={i} onClick={() => setSelected(i)}
-                                    style={{
-                                        textAlign:'left', padding:'10px 12px', borderRadius:'var(--r-md)', border:`2px solid ${isActive ? 'var(--primary)' : lv ? lv.color+'44' : 'var(--border)'}`,
-                                        background: isActive ? 'var(--primary-muted)' : 'var(--bg-card)', cursor:'pointer', transition:'var(--t-fast)', flexShrink:0
-                                    }}>
-                                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
-                                        <span style={{ fontSize:10, fontWeight:700, color: isActive ? 'var(--primary)' : 'var(--text-muted)' }}>#{s.number}</span>
-                                        {lv && <MdCircle size={8} color={lv.color} />}
-                                    </div>
-                                    <div style={{ fontSize:11, fontWeight:600, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', lineHeight:1.4, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
-                                        {s.title}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Slide detail */}
+                {/* ── Slide Preview ── */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, overflow: 'hidden', minWidth: 0 }}>
                     {current && (
-                        <div style={{ flex:1, display:'flex', flexDirection:'column', gap:14, overflow:'hidden' }}>
-
-                            {/* Slide preview card */}
+                        <>
+                            {/* PDF Slide card */}
                             <div style={{
-                                flex:1, background: currLevel ? currLevel.bg : 'var(--bg-card)',
-                                border:`2px solid ${currLevel ? currLevel.color+'44' : 'var(--border)'}`,
-                                borderRadius:'var(--r-xl)', padding:32, position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', justifyContent:'center'
+                                flex: 1,
+                                background: currLevel ? `linear-gradient(135deg, ${currLevel.bg}, var(--bg-card))` : 'var(--bg-card)',
+                                border: `2px solid ${currLevel ? currLevel.color + '50' : 'var(--border)'}`,
+                                borderRadius: 'var(--r-xl)', 
+                                overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column',
+                                boxShadow: currLevel ? `0 8px 32px ${currLevel.color}22` : 'none',
+                                transition: 'all 0.3s ease',
+                                alignItems: 'center', justifyContent: 'center'
                             }}>
+                                <Document file={pdfUrl} loading={<div className="spinner" style={{ width: 30, height: 30, borderWidth: 3 }} />}>
+                                    <Page pageNumber={selected + 1} renderTextLayer={false} renderAnnotationLayer={false} width={500} />
+                                </Document>
+
                                 {/* Taxonomy badge */}
                                 {currLevel && (
                                     <div style={{
-                                        position:'absolute', top:20, right:20,
-                                        display:'flex', alignItems:'center', gap:8, padding:'8px 16px',
-                                        background: currLevel.color, borderRadius:99, color:'#fff',
-                                        fontSize:13, fontWeight:700, boxShadow:`0 4px 16px ${currLevel.color}55`
+                                        position: 'absolute', top: 18, right: 18,
+                                        display: 'flex', alignItems: 'center', gap: 6,
+                                        padding: '7px 16px', background: currLevel.color, borderRadius: 99,
+                                        color: '#fff', fontSize: 13, fontWeight: 700,
+                                        boxShadow: `0 4px 20px ${currLevel.color}66`
                                     }}>
-                                        <span style={{ fontSize:16 }}>{currLevel.emoji}</span>
-                                        {currLevel.label}
-                                    </div>
-                                )}
-
-                                {!currLevel && (
-                                    <div style={{ position:'absolute', top:20, right:20, display:'flex', alignItems:'center', gap:6, padding:'6px 14px', background:'var(--warning-bg)', border:'1px solid var(--warning-border)', borderRadius:99, color:'var(--warning-text)', fontSize:12, fontWeight:600 }}>
-                                        <MdInfo size={14} /> Not labeled
+                                        <span style={{ fontSize: 15 }}>{currLevel.emoji}</span> {currLevel.label}
                                     </div>
                                 )}
 
                                 {/* Slide number */}
-                                <div style={{ fontSize:12, fontWeight:600, color: currLevel ? currLevel.color : 'var(--text-muted)', marginBottom:12, letterSpacing:'0.05em', textTransform:'uppercase' }}>
+                                <div style={{ position: 'absolute', top: 18, left: 18, fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,0.9)', padding: '4px 10px', borderRadius: 99, color: currLevel?.color || 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                                     Slide {current.number} of {slides.length}
                                 </div>
-
-                                {/* Title */}
-                                <h2 style={{ fontSize:22, fontWeight:800, color:'var(--text-primary)', marginBottom:16, lineHeight:1.3 }}>
-                                    {current.title}
-                                </h2>
-
-                                {/* Bullets */}
-                                {current.bullets.length > 0 && (
-                                    <ul style={{ listStyle:'none', display:'flex', flexDirection:'column', gap:6 }}>
-                                        {current.bullets.map((b, i) => (
-                                            <li key={i} style={{ display:'flex', alignItems:'flex-start', gap:8, fontSize:13, color:'var(--text-secondary)', lineHeight:1.5 }}>
-                                                <span style={{ flexShrink:0, width:6, height:6, borderRadius:'50%', background: currLevel ? currLevel.color : 'var(--text-muted)', marginTop:6 }} />
-                                                {b}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
                             </div>
 
                             {/* Navigation */}
-                            <div style={{ display:'flex', gap:10, justifyContent:'center' }}>
-                                <button className="btn btn-ghost" onClick={() => navigate(-1)} disabled={selected === 0}>
-                                    <MdChevronLeft size={18} /> Previous
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+                                <button className="btn btn-ghost" onClick={() => setSelected(p => Math.max(0, p - 1))} disabled={selected === 0}>
+                                    <MdChevronLeft size={18} /> Prev
                                 </button>
-                                <span style={{ padding:'8px 16px', fontSize:13, color:'var(--text-muted)', fontWeight:600 }}>
+                                <span style={{ padding: '6px 14px', fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, background: 'var(--bg-card)', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
                                     {selected + 1} / {slides.length}
                                 </span>
-                                <button className="btn btn-ghost" onClick={() => navigate(1)} disabled={selected === slides.length - 1}>
+                                <button className="btn btn-ghost" onClick={() => setSelected(p => Math.min(slides.length - 1, p + 1))} disabled={selected === slides.length - 1}>
                                     Next <MdChevronRight size={18} />
                                 </button>
                             </div>
+                        </>
+                    )}
+                </div>
 
-                            {/* Taxonomy Selector */}
-                            <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'var(--r-lg)', padding:18 }}>
-                                <div style={{ fontSize:13, fontWeight:700, color:'var(--text-secondary)', marginBottom:12 }}>
-                                    Set Bloom's Taxonomy Level for this slide:
+                {/* ── AI Suggestions Panel ── */}
+                <div style={{ width: 298, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }} className="thin-scroll">
+
+                    {/* AI Classification Note */}
+                    {current?.aiNotes && (
+                        <div style={{ background: 'var(--bg-card)', border: `1px solid ${currLevel?.color || 'var(--border)'}44`, borderRadius: 'var(--r-lg)', padding: 16, borderLeft: `4px solid ${currLevel?.color || 'var(--primary)'}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                <MdInfo size={14} style={{ color: currLevel?.color || 'var(--primary)', flexShrink: 0 }} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                    AI Classification
+                                </span>
+                            </div>
+                            {currLevel && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '6px 10px', background: currLevel.bg, borderRadius: 'var(--r-sm)' }}>
+                                    <span style={{ fontSize: 18 }}>{currLevel.emoji}</span>
+                                    <div>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: currLevel.color }}>{currLevel.label}</div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{currLevel.verbs}</div>
+                                    </div>
                                 </div>
-                                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
-                                    {BLOOM_LEVELS.map(l => {
-                                        const isSel = current.taxonomyLevel === l.id;
-                                        return (
-                                            <button key={l.id} onClick={() => setTaxonomy(current.id, isSel ? null : l.id)}
-                                                style={{
-                                                    padding:'10px 12px', borderRadius:'var(--r-md)', border:`2px solid ${isSel ? l.color : 'var(--border)'}`,
-                                                    background: isSel ? l.bg : 'transparent', cursor:'pointer', transition:'var(--t-fast)',
-                                                    textAlign:'left', display:'flex', flexDirection:'column', gap:2
-                                                }}>
-                                                <span style={{ fontSize:16 }}>{l.emoji}</span>
-                                                <span style={{ fontSize:12, fontWeight:700, color: isSel ? l.color : 'var(--text-secondary)' }}>{l.label}</span>
-                                                <span style={{ fontSize:10, color:'var(--text-muted)', lineHeight:1.3 }}>{l.verbs}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                            )}
+                            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                                {current.aiNotes}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Improvement Suggestions */}
+                    {current?.suggestions?.length > 0 && (
+                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                                <MdLightbulb size={14} style={{ color: '#F59E0B', flexShrink: 0 }} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                    Improvement Suggestions
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {current.suggestions.map((s, i) => (
+                                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                        <div style={{
+                                            flexShrink: 0, width: 24, height: 24, borderRadius: '50%',
+                                            background: currLevel?.bg || 'var(--bg-input)',
+                                            border: `1.5px solid ${currLevel?.color || 'var(--border)'}66`,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 11, fontWeight: 800, color: currLevel?.color || 'var(--text-muted)'
+                                        }}>
+                                            {i + 1}
+                                        </div>
+                                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>
+                                            {s}
+                                        </p>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
+
+                    {/* Student Questions Preview */}
+                    {current?.studentQuestions?.length > 0 && (
+                        <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                                <MdSchool size={14} style={{ color: '#3B82F6', flexShrink: 0 }} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                    Student Questions (preview)
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {current.studentQuestions.map((q, i) => (
+                                    <div key={i} style={{
+                                        padding: '9px 11px',
+                                        background: 'var(--bg-input)',
+                                        borderRadius: 'var(--r-sm)',
+                                        borderLeft: `3px solid ${currLevel?.color || 'var(--primary)'}`,
+                                        fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5
+                                    }}>
+                                        Q{i + 1}: {q.question}
+                                    </div>
+                                ))}
+                            </div>
+                            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, marginBottom: 0 }}>
+                                ℹ️ Share with students to reveal answers in their dashboard.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Share tip */}
+                    {shared && (
+                        <div style={{ padding: 14, background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 'var(--r-md)', fontSize: 13, color: '#10B981', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <MdCheckCircle size={16} /> Slides shared! Students can now view taxonomy analysis and questions.
+                        </div>
+                    )}
                 </div>
-            )}
+
+            </div>
         </div>
     );
 };

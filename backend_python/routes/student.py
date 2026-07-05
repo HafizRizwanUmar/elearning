@@ -228,3 +228,70 @@ def student_notices():
     notices = [dict(r) for r in c.fetchall()]
     conn.close()
     return jsonify(notices), 200
+
+# ─── Dynamic Slide Explanation ───────────────────────────────────────────────────
+
+@student_bp.route('/taxonomy/explain-slide', methods=['POST'])
+@role_required('Student')
+def explain_slide():
+    data = request.json
+    slide = data.get('slide', {})
+    level = data.get('level', 'remember')
+    
+    if not slide:
+        return jsonify({'message': 'No slide provided'}), 400
+        
+    try:
+        import json
+        from openai import OpenAI
+        import os
+        
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        
+        slide_text = f"Slide {slide.get('number', '?')}: {slide.get('title', '')}\n"
+        for b in slide.get('bullets', []):
+            slide_text += f"  - {b}\n"
+            
+        system_prompt = """You are an expert AI tutor specializing in Bloom's Taxonomy-based learning. Your job is to guide students through a slide using a specific cognitive level. Be concise, encouraging, and pedagogically sound."""
+        
+        user_prompt = f"""A student is viewing this slide and wants a Bloom's Taxonomy guided explanation at the '{level}' level.
+
+Slide Content:
+{slide_text}
+
+Provide a structured explanation with:
+1. A brief, engaging overview (2-3 sentences) at the '{level}' cognitive level
+2. Exactly 3 guiding questions at the '{level}' level that help the student deeply process the slide
+3. For each question, a short hint/answer to check understanding
+
+Blooms level '{level}' means: remember=recall facts, understand=explain in own words, apply=use in real situations, analyze=break down and compare, evaluate=judge and critique, create=design something new.
+
+Respond ONLY with valid JSON in this exact structure:
+{{
+  "overview": "Brief engaging overview at this bloom level.",
+  "questions": [
+    {{ "q": "Question 1?", "hint": "Short hint/answer." }},
+    {{ "q": "Question 2?", "hint": "Short hint/answer." }},
+    {{ "q": "Question 3?", "hint": "Short hint/answer." }}
+  ]
+}}"""
+
+        response = client.chat.completions.create(
+            model='gpt-4o-mini',
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user',   'content': user_prompt}
+            ],
+            response_format={'type': 'json_object'},
+            temperature=0.4,
+            max_tokens=1200
+        )
+        
+        result = json.loads(response.choices[0].message.content)
+        return jsonify({
+            'overview': result.get('overview', ''),
+            'questions': result.get('questions', [])
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': f'AI explanation failed: {str(e)}'}), 500

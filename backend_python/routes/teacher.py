@@ -430,3 +430,312 @@ def delete_announcement(aid):
     conn.commit()
     conn.close()
     return jsonify({'message': 'Deleted'}), 200
+
+# ─── AI Taxonomy Analysis ──────────────────────────────────────────────────────
+
+@teacher_bp.route('/taxonomy/analyze', methods=['POST'])
+@role_required('Teacher')
+def analyze_taxonomy():
+    """
+    Accepts a .pptx file, parses slide text with python-pptx, then calls
+    OpenAI to classify each slide by Bloom's Taxonomy level, generate
+    improvement suggestions for the teacher, and generate student questions.
+    """
+    if 'file' not in request.files:
+        return jsonify({'message': 'No file provided'}), 400
+
+    file = request.files['file']
+    if not file.filename or not file.filename.lower().endswith('.pptx'):
+        return jsonify({'message': 'Only .pptx files are supported'}), 400
+
+    # ── Parse PPTX ──
+    try:
+        import io
+        from pptx import Presentation
+        prs = Presentation(io.BytesIO(file.read()))
+    except Exception as e:
+        return jsonify({'message': f'Could not parse PPTX: {str(e)}'}), 400
+
+    slides_data = []
+    for i, slide in enumerate(prs.slides):
+        title = ''
+        bullets = []
+        for shape in slide.shapes:
+            if not shape.has_text_frame:
+                continue
+            for j, para in enumerate(shape.text_frame.paragraphs):
+                text = para.text.strip()
+                if not text or len(text) < 2:
+                    continue
+                if not title and len(text) > 2:
+                    title = text
+                elif text != title:
+                    bullets.append(text)
+
+        if not title:
+            title = f'Slide {i + 1}'
+
+        slides_data.append({
+            'id': i + 1,
+            'number': i + 1,
+            'title': title,
+            'bullets': list(dict.fromkeys(bullets))[:8]  # deduplicate, max 8
+        })
+
+    if not slides_data:
+        return jsonify({'message': 'No readable slides found in this file'}), 400
+
+    # ── Build prompt ──
+    slides_text = ''
+    for s in slides_data:
+        slides_text += f'\nSlide {s["number"]}: {s["title"]}\n'
+        for b in s['bullets']:
+            slides_text += f'  - {b}\n'
+
+    system_prompt = """You are an expert instructional designer specializing in Bloom's Taxonomy.
+Your task is to analyze presentation slides and return a JSON response with the exact structure requested.
+Be concise, practical, and actionable in your suggestions."""
+
+    user_prompt = f"""Analyze these presentation slides and for each slide provide:
+1. Bloom's Taxonomy classification (one of: remember, understand, apply, analyze, evaluate, create)
+2. AI classification reasoning (1-2 sentences)
+3. 2-3 specific, actionable improvement suggestions to better align with that level
+4. A short, engaging explanation of the slide directly addressing the student, explicitly utilizing the assigned taxonomy level's framing (e.g., if 'Apply', explain how they would apply this; if 'Analyze', explain how to break it down).
+5. 2-3 student questions at that taxonomy level to help students understand the content
+
+Bloom's levels reference:
+- remember: Recall, List, Name, Define, Recognize
+- understand: Explain, Summarize, Classify, Paraphrase
+- apply: Demonstrate, Solve, Execute, Implement
+- analyze: Differentiate, Compare, Examine, Deconstruct
+- evaluate: Judge, Critique, Justify, Defend
+- create: Design, Build, Construct, Compose
+
+SLIDES:
+{slides_text}
+
+Respond ONLY with valid JSON in this exact structure:
+{{
+  "slides": [
+    {{
+      "id": 1,
+      "taxonomyLevel": "remember",
+      "aiNotes": "Brief reason why this taxonomy level was assigned.",
+      "suggestions": [
+        "Actionable improvement suggestion 1",
+        "Actionable improvement suggestion 2"
+      ],
+      "studentExplanation": "Engaging explanation of the slide for the student using the taxonomy framing.",
+      "studentQuestions": [
+        {{"question": "Question that helps students understand?", "answer": "Concise answer/hint for the student."}},
+        {{"question": "Another learning question?", "answer": "Answer hint."}}
+      ]
+    }}
+  ]
+}}"""
+
+    # ── Call OpenAI ──
+    try:
+        import json
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+        response = client.chat.completions.create(
+            model='gpt-4o-mini',
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user',   'content': user_prompt}
+            ],
+            response_format={'type': 'json_object'},
+            temperature=0.3,
+            max_tokens=4000
+        )
+
+        ai_result = json.loads(response.choices[0].message.content)
+    except Exception as e:
+        return jsonify({'message': f'AI analysis failed: {str(e)}'}), 500
+
+    # ── Merge AI result with parsed slide data ──
+    ai_map = {s['id']: s for s in ai_result.get('slides', [])}
+    valid_levels = {'remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'}
+
+    result_slides = []
+    for s in slides_data:
+        ai = ai_map.get(s['id'], {})
+        level = ai.get('taxonomyLevel', 'remember')
+        if level not in valid_levels:
+            level = 'remember'
+        result_slides.append({
+            **s,
+            'taxonomyLevel': level,
+            'aiNotes': ai.get('aiNotes', ''),
+            'suggestions': ai.get('suggestions', []),
+            'studentExplanation': ai.get('studentExplanation', ''),
+            'studentQuestions': ai.get('studentQuestions', [])
+        })
+
+    return jsonify({'slides': result_slides}), 200
+
+@teacher_bp.route('/taxonomy/analyze-text', methods=['POST'])
+@role_required('Teacher')
+def analyze_taxonomy_text():
+    """
+    Accepts JSON with parsed slide data, calls OpenAI to classify each slide 
+    by Bloom's Taxonomy level, generate improvement suggestions for the teacher, 
+    and generate student questions.
+    """
+    data = request.json
+    slides_data = data.get('slides', [])
+    
+    if not slides_data:
+        return jsonify({'message': 'No slides provided'}), 400
+
+    # ── Build prompt ──
+    slides_text = ''
+    for s in slides_data:
+        slides_text += f'\nSlide {s.get("number", "?")}: {s.get("title", "")}\n'
+        for b in s.get('bullets', []):
+            slides_text += f'  - {b}\n'
+
+    system_prompt = """You are an expert instructional designer specializing in Bloom's Taxonomy.
+Your task is to analyze presentation slides and return a JSON response with the exact structure requested.
+Be concise, practical, and actionable in your suggestions."""
+
+    user_prompt = f"""Analyze these presentation slides and for each slide provide:
+1. Bloom's Taxonomy classification (one of: remember, understand, apply, analyze, evaluate, create)
+2. AI classification reasoning (1-2 sentences)
+3. 2-3 specific, actionable improvement suggestions to better align with that level
+4. A short, engaging explanation of the slide directly addressing the student, explicitly utilizing the assigned taxonomy level's framing (e.g., if 'Apply', explain how they would apply this; if 'Analyze', explain how to break it down).
+5. 2-3 student questions at that taxonomy level to help students understand the content
+
+Bloom's levels reference:
+- remember: Recall, List, Name, Define, Recognize
+- understand: Explain, Summarize, Classify, Paraphrase
+- apply: Demonstrate, Solve, Execute, Implement
+- analyze: Differentiate, Compare, Examine, Deconstruct
+- evaluate: Judge, Critique, Justify, Defend
+- create: Design, Build, Construct, Compose
+
+SLIDES:
+{slides_text}
+
+Respond ONLY with valid JSON in this exact structure:
+{{
+  "slides": [
+    {{
+      "id": 1,
+      "taxonomyLevel": "remember",
+      "aiNotes": "Brief reason why this taxonomy level was assigned.",
+      "suggestions": [
+        "Actionable improvement suggestion 1",
+        "Actionable improvement suggestion 2"
+      ],
+      "studentExplanation": "Engaging explanation of the slide for the student using the taxonomy framing.",
+      "studentQuestions": [
+        {{"question": "Question that helps students understand?", "answer": "Concise answer/hint for the student."}},
+        {{"question": "Another learning question?", "answer": "Answer hint."}}
+      ]
+    }}
+  ]
+}}"""
+
+    # ── Call OpenAI ──
+    try:
+        import json
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+        response = client.chat.completions.create(
+            model='gpt-4o-mini',
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user',   'content': user_prompt}
+            ],
+            response_format={'type': 'json_object'},
+            temperature=0.3,
+            max_tokens=4000
+        )
+
+        ai_result = json.loads(response.choices[0].message.content)
+    except Exception as e:
+        return jsonify({'message': f'AI analysis failed: {str(e)}'}), 500
+
+    # ── Map result back to slides ──
+    ai_map = {s['id']: s for s in ai_result.get('slides', [])}
+    valid_levels = {'remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'}
+
+    result_slides = []
+    for s in slides_data:
+        ai = ai_map.get(s['id'], {})
+        level = ai.get('taxonomyLevel', 'remember')
+        if level not in valid_levels:
+            level = 'remember'
+        result_slides.append({
+            **s,
+            'taxonomyLevel': level,
+            'aiNotes': ai.get('aiNotes', ''),
+            'suggestions': ai.get('suggestions', []),
+            'studentExplanation': ai.get('studentExplanation', ''),
+            'studentQuestions': ai.get('studentQuestions', [])
+        })
+
+    return jsonify({'slides': result_slides}), 200
+
+import uuid
+from pypdf import PdfReader
+
+@teacher_bp.route('/taxonomy/upload-pdf', methods=['POST'])
+@role_required('Teacher')
+def upload_pdf():
+    """
+    Accepts a .pdf file, saves it to the UPLOAD_FOLDER with a unique name,
+    extracts raw text per page using pypdf, and returns the pdfUrl and parsed slide text.
+    """
+    if 'file' not in request.files:
+        return jsonify({'message': 'No file provided'}), 400
+
+    file = request.files['file']
+    if not file.filename or not file.filename.lower().endswith('.pdf'):
+        return jsonify({'message': 'Only .pdf files are supported'}), 400
+
+    # Save the file
+    from flask import current_app
+    import os
+    
+    unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
+    upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename)
+    file.save(upload_path)
+    
+    pdf_url = f"/api/uploads/{unique_filename}"
+
+    # Extract text per page
+    try:
+        reader = PdfReader(upload_path)
+        slides_data = []
+        for i, page in enumerate(reader.pages):
+            text = page.extract_text() or ""
+            # For PDF we just pass the raw text as a single "bullet" or "title" to the AI, 
+            # the AI is smart enough to structure it.
+            # We split by newlines just to simulate bullets for the prompt builder if needed.
+            lines = [line.strip() for line in text.split('\n') if len(line.strip()) > 2]
+            
+            title = lines[0] if lines else f"Page {i+1}"
+            bullets = list(dict.fromkeys(lines[1:]))[:8] if len(lines) > 1 else []
+            
+            slides_data.append({
+                'id': i + 1,
+                'number': i + 1,
+                'title': title,
+                'bullets': bullets,
+                'taxonomyLevel': None,
+                'suggestions': [],
+                'studentQuestions': [],
+                'studentExplanation': '',
+                'aiNotes': ''
+            })
+    except Exception as e:
+        # If extraction fails, we still return the url so they can see the PDF at least
+        return jsonify({'message': f'Failed to extract text: {str(e)}', 'pdfUrl': pdf_url, 'slides': []}), 200
+
+    return jsonify({'pdfUrl': pdf_url, 'slides': slides_data}), 200
+
